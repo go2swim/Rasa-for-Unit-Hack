@@ -186,11 +186,11 @@ recipe: default.v1
 
 # The assistant project unique identifier
 # This default value must be replaced with a unique assistant name within your deployment
-assistant_id: 20250517-014538-moderato-primer
+assistant_id: 20250517-014538-moderato-primer # Рекомендуется сменить на уникальное имя вашего проекта
 
 # Configuration for Rasa NLU.
 # https://rasa.com/docs/rasa/nlu/components/
-language: en
+language: ru # <<< ИЗМЕНЕНО НА ru
 
 pipeline:
    - name: WhitespaceTokenizer
@@ -202,21 +202,27 @@ pipeline:
      min_ngram: 1
      max_ngram: 4
    - name: DIETClassifier
-     epochs: 100
+     epochs: 100 # Для реального проекта может потребоваться больше эпох и данных
      constrain_similarities: true
    - name: EntitySynonymMapper
+   # ResponseSelector и FallbackClassifier не обязательны, если вы используете Rasa только для NLU
+   # Но они не мешают, если вы вдруг решите добавить диалоговые функции.
    - name: ResponseSelector
      epochs: 100
      constrain_similarities: true
    - name: FallbackClassifier
-     threshold: 0.3
+     threshold: 0.5 # Можно настроить порог
      ambiguity_threshold: 0.1
 
 # Configuration for Rasa Core.
 # https://rasa.com/docs/rasa/core/policies/
+# Если вы используете Rasa только для NLU, политики Core менее важны,
+# но RulePolicy полезна для прямого вызова action после интента.
 policies:
    - name: MemoizationPolicy
    - name: RulePolicy
+     # Включите это, если хотите, чтобы RulePolicy обрабатывала события от кастомных actions
+     # enable_fallback_prediction: True
    - name: UnexpecTEDIntentPolicy
      max_history: 5
      epochs: 100
@@ -224,60 +230,6 @@ policies:
      max_history: 5
      epochs: 100
      constrain_similarities: true
-
-
-================================================================================
-
-# Файл: config.yml~
-# Содержимое:
-# The config recipe.
-# https://rasa.com/docs/rasa/model-configuration/
-recipe: default.v1
-
-# The assistant project unique identifier
-# This default value must be replaced with a unique assistant name within your deployment
-assistant_id: 20250517-014538-moderato-primer
-
-# Configuration for Rasa NLU.
-# https://rasa.com/docs/rasa/nlu/components/
-language: en
-
-pipeline: null
-# # No configuration for the NLU pipeline was provided. The following default pipeline was used to train your model.
-# # If you'd like to customize it, uncomment and adjust the pipeline.
-# # See https://rasa.com/docs/rasa/tuning-your-model for more information.
-#   - name: WhitespaceTokenizer
-#   - name: RegexFeaturizer
-#   - name: LexicalSyntacticFeaturizer
-#   - name: CountVectorsFeaturizer
-#   - name: CountVectorsFeaturizer
-#     analyzer: char_wb
-#     min_ngram: 1
-#     max_ngram: 4
-#   - name: DIETClassifier
-#     epochs: 100
-#     constrain_similarities: true
-#   - name: EntitySynonymMapper
-#   - name: ResponseSelector
-#     epochs: 100
-#     constrain_similarities: true
-#   - name: FallbackClassifier
-#     threshold: 0.3
-#     ambiguity_threshold: 0.1
-
-# Configuration for Rasa Core.
-# https://rasa.com/docs/rasa/core/policies/
-policies: null
-   - name: MemoizationPolicy
-   - name: RulePolicy
-   - name: UnexpecTEDIntentPolicy
-     max_history: 5
-     epochs: 100
-   - name: TEDPolicy
-     max_history: 5
-     epochs: 100
-     constrain_similarities: true
-
 
 ================================================================================
 
@@ -326,43 +278,105 @@ version: "3.1"
 
 intents:
   - greet
-  - search_person
+  - goodbye
+  - affirm
+  - deny
+  - bot_challenge
+  - search_person:
+      use_entities:
+        - name
+        - department
+        - project
+  - search_event:
+      use_entities:
+        - event_name
+        - date
+  - find_birthday:
+      use_entities:
+        - name
+        - date
+  - check_task:
+      use_entities:
+        - task_name
+        - project
+        - date
+  - check_employment_calendar:
+      use_entities:
+        - name
+        - date
 
 entities:
   - name
   - department
+  - project
+  - event_name
+  - date
+  - task_name
 
 slots:
   name:
     type: text
+    influence_conversation: false
     mappings:
       - type: from_entity
         entity: name
-      - type: from_text
   department:
     type: text
+    influence_conversation: false
     mappings:
       - type: from_entity
         entity: department
-      - type: from_text
+  project:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: project
+  # ... (остальные слоты как в предыдущем ответе) ...
+  event_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_name
+  date:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: date
+  task_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_name
 
 responses:
   utter_greet:
-    - text: "Привет! Кого ты хочешь найти?"
-  utter_ask_name:
-    - text: "Как зовут человека?"
-  utter_ask_department:
-    - text: "Из какого отдела?"
-  utter_found_person:
-    - text: "✅ Я нашёл информацию о {name} из отдела {department}."
+    - text: "Привет! Чем могу помочь?"
+  utter_goodbye:
+    - text: "До свидания!"
+  utter_iamabot:
+    - text: "Я AI-ассистент."
+  utter_ask_details_person:
+    - text: "Можете уточнить имя, фамилию, отдел или проект сотрудника?"
+    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали."
+  # ... (остальные ответы как в предыдущем ответе) ...
+  utter_ask_details_event:
+    - text: "Какое мероприятие или дата вас интересует?"
+  utter_ask_details_task:
+    - text: "Уточните название задачи, проекта или дату."
+  utter_processing_request:
+    - text: "Понял, обрабатываю ваш запрос..."
+
 
 actions:
-  - action_search_person
+  - action_process_request
 
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
-
 
 ================================================================================
 
@@ -372,43 +386,105 @@ version: "3.1"
 
 intents:
   - greet
-  - search_person
+  - goodbye
+  - affirm
+  - deny
+  - bot_challenge
+  - search_person:
+      use_entities:
+        - name
+        - department
+        - project
+  - search_event:
+      use_entities:
+        - event_name
+        - date
+  - find_birthday:
+      use_entities:
+        - name
+        - date
+  - check_task:
+      use_entities:
+        - task_name
+        - project
+        - date
+  - check_calendar_занятости:
+      use_entities:
+        - name
+        - date
 
 entities:
   - name
   - department
+  - project
+  - event_name
+  - date
+  - task_name
 
 slots:
   name:
     type: text
+    influence_conversation: false
     mappings:
       - type: from_entity
         entity: name
-      - type: from_text  # на случай, если сущность не найдена
   department:
     type: text
+    influence_conversation: false
     mappings:
       - type: from_entity
         entity: department
-      - type: from_text
+  project:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: project
+  # ... (остальные слоты как в предыдущем ответе) ...
+  event_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_name
+  date:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: date
+  task_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_name
 
 responses:
   utter_greet:
-    - text: "Привет! Кого ты хочешь найти?"
-  utter_ask_name:
-    - text: "Как зовут человека?"
-  utter_ask_department:
-    - text: "Из какого отдела?"
-  utter_found_person:
-    - text: "✅ Я нашёл информацию о {name} из отдела {department}."
+    - text: "Привет! Чем могу помочь?"
+  utter_goodbye:
+    - text: "До свидания!"
+  utter_iamabot:
+    - text: "Я AI-ассистент."
+  utter_ask_details_person:
+    - text: "Можете уточнить имя, фамилию, отдел или проект сотрудника?"
+    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали."
+  # ... (остальные ответы как в предыдущем ответе) ...
+  utter_ask_details_event:
+    - text: "Какое мероприятие или дата вас интересует?"
+  utter_ask_details_task:
+    - text: "Уточните название задачи, проекта или дату."
+  utter_processing_request:
+    - text: "Понял, обрабатываю ваш запрос..."
+
 
 actions:
-  - action_search_person
+  - action_process_request
 
 session_config:
   session_expiration_time: 60
   carry_over_slots_to_new_session: true
-
 
 ================================================================================
 
@@ -427,7 +503,8 @@ session_config:
 # https://rasa.com/docs/rasa/custom-actions
 
 action_endpoint:
-  url: "http://localhost:5055/webhook"
+ url: "http://localhost:5055/webhook"
+ url: "http://localhost:5005/model/parse"
 
 # Tracker store which is used to store the conversations.
 # By default the conversations are stored in memory.
@@ -456,55 +533,6 @@ action_endpoint:
 #  username: username
 #  password: password
 #  queue: queue
-
-
-================================================================================
-
-# Файл: endpoints.yml~
-# Содержимое:
-# This file contains the different endpoints your bot can use.
-
-# Server where the models are pulled from.
-# https://rasa.com/docs/rasa/model-storage#fetching-models-from-a-server
-
-#models:
-#  url: http://my-server.com/models/default_core@latest
-#  wait_time_between_pulls:  10   # [optional](default: 100)
-
-# Server which runs your custom actions.
-# https://rasa.com/docs/rasa/custom-actions
-
-#action_endpoint:
-#  url: "http://localhost:5055/webhook"
-
-# Tracker store which is used to store the conversations.
-# By default the conversations are stored in memory.
-# https://rasa.com/docs/rasa/tracker-stores
-
-#tracker_store:
-#    type: redis
-#    url: <host of the redis instance, e.g. localhost>
-#    port: <port of your redis instance, usually 6379>
-#    db: <number of your database within redis, e.g. 0>
-#    password: <password used for authentication>
-#    use_ssl: <whether or not the communication is encrypted, default false>
-
-#tracker_store:
-#    type: mongod
-#    url: <url to your mongo instance, e.g. mongodb://localhost:27017>
-#    db: <name of the db within your mongo instance, e.g. rasa>
-#    username: <username used for authentication>
-#    password: <password used for authentication>
-
-# Event broker which all conversation events should be streamed to.
-# https://rasa.com/docs/rasa/event-brokers
-
-#event_broker:
-#  url: localhost
-#  username: username
-#  password: password
-#  queue: queue
-
 
 ================================================================================
 
@@ -512,33 +540,187 @@ action_endpoint:
 # Содержимое:
 # Rasa-for-Unit-Hack
 
+python 3.9
+
+````
+pip install rasa[spacy]
+pip install rasa-sdk
+pip install spacy
+python -m spacy download ru_core_news_sm
+pip install rasa[transformers] transformers
+````
+
+Запуск:
+````
+rasa train
+rasa run actions
+rasa shell
+````
+
+
+================================================================================
+
+# Файл: test_api.py
+# Содержимое:
+import requests
+import json
+
+rasa_url = "http://localhost:5005/model/parse"
+
+
+def get_nlu_data(text_query):
+    payload = {"text": text_query}
+    try:
+        response = requests.post(rasa_url, json=payload)
+        response.raise_for_status()  # Проверка на HTTP ошибки
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при обращении к Rasa NLU API: {e}")
+        return None
+
+
+if __name__ == "__main__":
+    queries = [
+        "Найди Анну Смирнову из IT",
+        "Какие мероприятия завтра?",
+        "У кого день рождения в июне?",
+        "Привет",
+        "Покажи мне Волкова Михаила",
+        "телефон Кузнецова",
+        "Сотрудник Лебедева Наталья из бухгалтерии в проекте Гамма"
+    ]
+
+    for query in queries:
+        print(f"\nЗапрос: {query}")
+        nlu_result = get_nlu_data(query)
+        if nlu_result:
+            print("Результат NLU:")
+            print(f"  Текст: {nlu_result.get('text')}")
+            intent = nlu_result.get('intent', {})
+            print(f"  Интент: {intent.get('name')} (Confidence: {intent.get('confidence'):.4f})")
+
+            entities = nlu_result.get('entities', [])
+            if entities:
+                print("  Сущности:")
+                for entity in entities:
+                    print(f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}', "
+                          f"Confidence: {entity.get('confidence_entity', 'N/A'):.4f}")
+            else:
+                print("  Сущности: не найдены")
+            # print(json.dumps(nlu_result, indent=2, ensure_ascii=False)) # Раскомментируйте для полного вывода JSON
+        print("-" * 30)
+
 ================================================================================
 
 # Файл: actions/actions.py
 # Содержимое:
 from typing import Any, Text, Dict, List
+import logging
+
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 
+# from rasa_sdk.events import SlotSet, UserUtteranceReverted # Не используются в текущей версии
 
-class ActionSearchPerson(Action):
+logger = logging.getLogger(__name__)
+
+
+class ActionProcessRequest(Action):
     def name(self) -> Text:
-        return "action_search_person"
+        return "action_process_request"
 
     def run(self, dispatcher: CollectingDispatcher,
             tracker: Tracker,
             domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-        name = next(tracker.get_latest_entity_values("name"), "неизвестно")
-        department = next(tracker.get_latest_entity_values("department"), "неизвестно")
 
-        dispatcher.utter_message(
-            text=f"Ищу человека по имени {name} из отдела {department}..."
-        )
-        dispatcher.utter_message(
-            text=f"✅ Я нашёл информацию о {name} из отдела {department}."
-        )
+        intent_name = tracker.latest_message['intent'].get('name')
+        entities = tracker.latest_message.get('entities', [])  # Убедимся, что entities всегда список
+
+        # Формируем структурированные данные для возможной отправки вовне
+        extracted_data = {
+            "intent": intent_name,
+            "entities": [],
+            "text": tracker.latest_message.get('text')
+        }
+
+        # Сообщение для логирования и ответа пользователю (для демонстрации)
+        log_message_parts = [f"Получен запрос с интентом: {intent_name}"]
+
+        if not entities:
+            log_message_parts.append("- Сущности не найдены.")
+        else:
+            log_message_parts.append("Извлеченные сущности:")
+            for entity in entities:
+                entity_info = {"entity": entity['entity'], "value": entity['value']}
+                if 'group' in entity:  # для regex entities
+                    entity_info['group'] = entity['group']
+                if 'role' in entity:  # для roles
+                    entity_info['role'] = entity['role']
+
+                extracted_data["entities"].append(entity_info)
+                log_message_parts.append(
+                    f"- {entity['entity']}: {entity['value']} (confidence: {entity.get('confidence_entity', 'N/A'):.2f})")
+
+        final_log_message = "\n".join(log_message_parts)
+        logger.info(f"Processing request: {tracker.latest_message.get('text')}\n{final_log_message}")
+        logger.info(f"Data to send to backend: {extracted_data}")
+
+        # Ответ пользователю (для демонстрации)
+        # dispatcher.utter_message(text=f"Обрабатываю ваш запрос: {tracker.latest_message.get('text')}")
+        # dispatcher.utter_message(text=final_log_message) # Можно закомментировать, если не нужен такой подробный ответ в чате
+
+        # Пример специфичной логики для search_person
+        if intent_name == "search_person":
+            # Собираем все значения для сущности 'name'
+            names_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'name']
+            departments_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'department']
+            projects_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'project']
+
+            # Для простоты берем первое найденное имя, отдел, проект
+            name_query = names_found[0] if names_found else "не указано"
+            department_query = departments_found[0] if departments_found else "не указан"
+            project_query = projects_found[0] if projects_found else "не указан"
+
+            # Это сообщение можно использовать для отладки или как часть ответа
+            # dispatcher.utter_message(
+            #     text=f"Ищу сотрудника: Имя/Фамилия: '{name_query}', Отдел: '{department_query}', Проект: '{project_query}'."
+            # )
+
+            # Здесь ваша логика обращения к БД или API для поиска сотрудника
+            # response_from_db = self.query_employee_db(name_query, department_query, project_query)
+            # dispatcher.utter_message(text=response_from_db)
+            # Для хакатона: просто подтверждаем получение данных
+            dispatcher.utter_message(
+                text=f"✅ Запрос на поиск сотрудника '{name_query}' (отдел: '{department_query}', проект: '{project_query}') принят.")
+
+
+        elif intent_name == "search_event":
+            event_names_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'event_name']
+            dates_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'date']
+            event_query = event_names_found[0] if event_names_found else "не указано"
+            date_query = dates_found[0] if dates_found else "не указана"
+            dispatcher.utter_message(
+                text=f"✅ Запрос на поиск мероприятия '{event_query}' (дата: '{date_query}') принят.")
+
+        # Добавьте обработку других интентов по аналогии
+        else:
+            # Общий ответ, если для интента нет специфичной логики выше
+            dispatcher.utter_message(text=f"✅ Ваш запрос (интент: {intent_name}) принят к обработке.")
+
+        # В реальном приложении здесь бы мог быть вызов вашего API:
+        # requests.post("URL_ВАШЕГО_БЭКЕНДА", json=extracted_data)
+
         return []
 
+    # def query_employee_db(self, name, department, project):
+    #     # Заглушка для метода обращения к БД
+    #     # В реальном приложении здесь будет код для запроса к вашей базе данных
+    #     # Например, используя psycopg2, SQLAlchemy, requests к вашему API и т.д.
+    #     logger.info(f"DB Query (simulated): Searching for Name='{name}', Department='{department}', Project='{project}'")
+    #     # Пример ответа
+    #     if name != "не указано":
+    #         return f"Информация по сотруднику '{name}' найдена (симуляция)."
+    #     return "Недостаточно данных для поиска сотрудника (симуляция)."
 
 ================================================================================
 
@@ -558,14 +740,283 @@ nlu:
       - привет
       - здравствуй
       - добрый день
+      - хай
+      - здорово
+
+  - intent: goodbye
+    examples: |
+      - пока
+      - до свидания
+      - всего доброго
+      - бай
+
+  # ... (affirm, deny, bot_challenge как в предыдущем ответе) ...
+  - intent: affirm
+    examples: |
+      - да
+      - конечно
+      - ага
+      - угу
+      - согласен
+
+  - intent: deny
+    examples: |
+      - нет
+      - неа
+      - не думаю
+      - вряд ли
+
+  - intent: bot_challenge
+    examples: |
+      - ты бот?
+      - ты человек?
+      - с кем я говорю?
 
   - intent: search_person
     examples: |
-      - Найди Анну из маркетинга
-      - Хочу найти Петра из IT
-      - Покажи мне Сергея из отдела продаж
-      - Где работает Иван?
+      # Только имя
+      - Найди [Анну](name)
+      - Где работает [Петр](name)?
+      - Мне нужен [Сергей](name) из [IT](department)
+      - Кто такая [Ольга](name) из [маркетинга](department)
+      - Покажи [Виктора](name)
+      - Ищу [Марию](name)
+      # Только фамилия
+      - Где найти [Смирнова](name)?
+      - Мне нужен [Иванов](name) из [продаж](project:Альфа)
+      - Контакты [Кузнецова](name)
+      - Кто такой [Петров](name) из [отдела кадров](department)?
+      # Имя + Фамилия
+      - Найди [Анну Смирнову](name)
+      - Ищу [Петра Иванова](name) из [IT](department)
+      - Покажи мне [Сергея Кузнецова](name) из отдела [продаж](department)
+      - Где работает [Иван Попов](name) в проекте [Омега](project)?
+      - Кто такой [Алексей Васильев](name)
+      - Контакты [Ольги Петровой](name)
+      - Телефон [Виктора Соколова](name)
+      - Кабинет [Марии Михайловой](name)
+      # Фамилия + Имя
+      - Найди [Новикова Константина](name)
+      - Ищу [Федорову Елену](name) из [бухгалтерии](department)
+      - Покажи мне [Морозова Дмитрия](name)
+      - Сотрудник [Волков Михаил](name)
+      # Полное ФИО (если применимо)
+      - Найди [Смирнова Анну Петровну](name)
+      - Мне нужен [Иванов Петр Сергеевич](name)
+      - Кто такой [Кузнецов Сергей Иванович](name) из [разработки](department)?
+      # С указанием "сотрудник"
+      - Сотрудник [Алексеев](name) из [логистики](department)
+      - Найди сотрудника [Лебедеву Наталью](name)
+      - Мне нужен сотрудник [Семенов Андрей](name)
+      # Разные формулировки
+      - Подскажи, где [Егорова Ирина](name)?
+      - Хочу связаться с [Павлом Фроловым](name)
+      - Нужна информация по [Екатерине Беловой](name) из проекта [Гамма](project)
+      - Работает ли у нас [Максим Козлов](name)?
+      - [Антон Мельников](name) еще в [финансах](department)?
+      # С возможными неточностями (Rasa должна научиться их обрабатывать)
+      - Ишу [Олексея](name) [Васильева](name) # Опечатка в имени
+      - Контакты [Мари Михайловой](name) # Пропущена буква
+      # Уменьшительно-ласкательные или сокращения (если не используем синонимы для этого)
+      - Где [Женя](name) из [маркетинга](department)? # Если Женя = Евгений
+      - Позови [Сашу](name) # Если Саша = Александр/Александра
+      # Запросы на поиск, где имя может быть в середине
+      - Из [отдела разработки](department) мне нужен [Дмитрий](name)
+      - В проекте [Феникс](project) работает [Светлана Зайцева](name), найди ее
+      - Это [Михаил Петрович Сидоров](name), верно?
+      - По [финансовому отделу](department) ищу [Наталью](name) [Лебедеву](name)
 
+  # Примеры для синонимов (если EntitySynonymMapper активен)
+  # Это говорит DIET, что "Женя" - это имя, а EntitySynonymMapper заменит "Женя" на "Евгений"
+  - synonym: Евгений
+    examples: |
+      - Женя
+      - Женька
+  - synonym: Александр # или Александра, если у вас есть оба
+    examples: |
+      - Саша
+      - Шурик
+  - synonym: Василий
+    examples: |
+      - Вася
+
+  - intent: search_event
+    examples: |
+      - Какие мероприятия [завтра](date)?
+      - Что у нас по [корпоративам](event_name)?
+      - Когда будет [летний тимбилдинг](event_name)?
+      - Покажи календарь мероприятий на [следующей неделе](date)
+      - Будет ли [новогодний праздник](event_name) [в декабре](date)?
+      - Расписание [тренингов](event_name)
+      - Какие [события](event_name) запланированы на [25 мая](date)
+
+  - intent: find_birthday
+    examples: |
+      - У кого день рождения [в этом месяце](date)?
+      - Когда ДР у [Ивана Петрова](name)?
+      - Дни рождения [в июне](date)
+      - Покажи список именинников на [сегодня](date)
+      - У [Анны](name) скоро день рождения?
+
+  - intent: check_task
+    examples: |
+      - Какие у меня задачи по проекту [Гамма](project)?
+      - Что с задачей [подготовить отчет](task_name)?
+      - Проверь статус задачи [релиз новой версии](task_name) на [эту пятницу](date)
+      - Мои задачи на [сегодня](date)
+      - Какие задачи у [Сергея](name) по проекту [Феникс](project)?
+
+  - intent: check_employment_calendar
+    examples: |
+      - Проверь занятость [Александра](name) на [завтра](date)
+      - Свободен ли [Михаил](name) [10 июня в 3 часа дня](date)?
+      - Календарь [Ольги](name)
+      - Занятость переговорки [Альфа](room_name) на [вторник](date)
+
+================================================================================
+
+# Файл: data/nlu.yml~
+# Содержимое:
+version: "3.1"
+
+nlu:
+  - intent: greet
+    examples: |
+      - привет
+      - здравствуй
+      - добрый день
+      - хай
+      - здорово
+
+  - intent: goodbye
+    examples: |
+      - пока
+      - до свидания
+      - всего доброго
+      - бай
+
+  # ... (affirm, deny, bot_challenge как в предыдущем ответе) ...
+  - intent: affirm
+    examples: |
+      - да
+      - конечно
+      - ага
+      - угу
+      - согласен
+
+  - intent: deny
+    examples: |
+      - нет
+      - неа
+      - не думаю
+      - вряд ли
+
+  - intent: bot_challenge
+    examples: |
+      - ты бот?
+      - ты человек?
+      - с кем я говорю?
+
+  - intent: search_person
+    examples: |
+      # Только имя
+      - Найди [Анну](name)
+      - Где работает [Петр](name)?
+      - Мне нужен [Сергей](name) из [IT](department)
+      - Кто такая [Ольга](name) из [маркетинга](department)
+      - Покажи [Виктора](name)
+      - Ищу [Марию](name)
+      # Только фамилия
+      - Где найти [Смирнова](name)?
+      - Мне нужен [Иванов](name) из [продаж](project:Альфа)
+      - Контакты [Кузнецова](name)
+      - Кто такой [Петров](name) из [отдела кадров](department)?
+      # Имя + Фамилия
+      - Найди [Анну Смирнову](name)
+      - Ищу [Петра Иванова](name) из [IT](department)
+      - Покажи мне [Сергея Кузнецова](name) из отдела [продаж](department)
+      - Где работает [Иван Попов](name) в проекте [Омега](project)?
+      - Кто такой [Алексей Васильев](name)
+      - Контакты [Ольги Петровой](name)
+      - Телефон [Виктора Соколова](name)
+      - Кабинет [Марии Михайловой](name)
+      # Фамилия + Имя
+      - Найди [Новикова Константина](name)
+      - Ищу [Федорову Елену](name) из [бухгалтерии](department)
+      - Покажи мне [Морозова Дмитрия](name)
+      - Сотрудник [Волков Михаил](name)
+      # Полное ФИО (если применимо)
+      - Найди [Смирнова Анну Петровну](name)
+      - Мне нужен [Иванов Петр Сергеевич](name)
+      - Кто такой [Кузнецов Сергей Иванович](name) из [разработки](department)?
+      # С указанием "сотрудник"
+      - Сотрудник [Алексеев](name) из [логистики](department)
+      - Найди сотрудника [Лебедеву Наталью](name)
+      - Мне нужен сотрудник [Семенов Андрей](name)
+      # Разные формулировки
+      - Подскажи, где [Егорова Ирина](name)?
+      - Хочу связаться с [Павлом Фроловым](name)
+      - Нужна информация по [Екатерине Беловой](name) из проекта [Гамма](project)
+      - Работает ли у нас [Максим Козлов](name)?
+      - [Антон Мельников](name) еще в [финансах](department)?
+      # С возможными неточностями (Rasa должна научиться их обрабатывать)
+      - Ишу [Олексея](name) [Васильева](name) # Опечатка в имени
+      - Контакты [Мари Михайловой](name) # Пропущена буква
+      # Уменьшительно-ласкательные или сокращения (если не используем синонимы для этого)
+      - Где [Женя](name) из [маркетинга](department)? # Если Женя = Евгений
+      - Позови [Сашу](name) # Если Саша = Александр/Александра
+      # Запросы на поиск, где имя может быть в середине
+      - Из [отдела разработки](department) мне нужен [Дмитрий](name)
+      - В проекте [Феникс](project) работает [Светлана Зайцева](name), найди ее
+      - Это [Михаил Петрович Сидоров](name), верно?
+      - По [финансовому отделу](department) ищу [Наталью](name) [Лебедеву](name)
+
+  # Примеры для синонимов (если EntitySynonymMapper активен)
+  # Это говорит DIET, что "Женя" - это имя, а EntitySynonymMapper заменит "Женя" на "Евгений"
+  - synonym: Евгений
+    examples: |
+      - Женя
+      - Женька
+  - synonym: Александр # или Александра, если у вас есть оба
+    examples: |
+      - Саша
+      - Шурик
+  - synonym: Василий
+    examples: |
+      - Вася
+
+  - intent: search_event
+    examples: |
+      - Какие мероприятия [завтра](date)?
+      - Что у нас по [корпоративам](event_name)?
+      - Когда будет [летний тимбилдинг](event_name)?
+      - Покажи календарь мероприятий на [следующей неделе](date)
+      - Будет ли [новогодний праздник](event_name) [в декабре](date)?
+      - Расписание [тренингов](event_name)
+      - Какие [события](event_name) запланированы на [25 мая](date)
+
+  - intent: find_birthday
+    examples: |
+      - У кого день рождения [в этом месяце](date)?
+      - Когда ДР у [Ивана Петрова](name)?
+      - Дни рождения [в июне](date)
+      - Покажи список именинников на [сегодня](date)
+      - У [Анны](name) скоро день рождения?
+
+  - intent: check_task
+    examples: |
+      - Какие у меня задачи по проекту [Гамма](project)?
+      - Что с задачей [подготовить отчет](task_name)?
+      - Проверь статус задачи [релиз новой версии](task_name) на [эту пятницу](date)
+      - Мои задачи на [сегодня](date)
+      - Какие задачи у [Сергея](name) по проекту [Феникс](project)?
+
+  - intent: check_calendar_занятости
+    examples: |
+      - Проверь занятость [Александра](name) на [завтра](date)
+      - Свободен ли [Михаил](name) [10 июня в 3 часа дня](date)?
+      - Календарь [Ольги](name)
+      - Занятость переговорки [Альфа](room_name) на [вторник](date)
 
 ================================================================================
 
@@ -584,12 +1035,35 @@ rules:
   - intent: bot_challenge
   - action: utter_iamabot
 
-- rule: Обработка поиска человека сразу
+- rule: Greet user
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Process person search request
   steps:
   - intent: search_person
-  - action: action_search_person
+  - action: action_process_request
 
+- rule: Process event search request
+  steps:
+  - intent: search_event
+  - action: action_process_request
 
+- rule: Process birthday find request
+  steps:
+  - intent: find_birthday
+  - action: action_process_request
+
+- rule: Process task check request
+  steps:
+  - intent: check_task
+  - action: action_process_request
+
+- rule: Process calendar check request # <<< ИЗМЕНЕНО НАЗВАНИЕ ИНТЕНТА
+  steps:
+  - intent: check_employment_calendar # <<< ИЗМЕНЕНО НАЗВАНИЕ ИНТЕНТА
+  - action: action_process_request
 
 ================================================================================
 
@@ -598,22 +1072,189 @@ rules:
 version: "3.1"
 
 stories:
-- story: поиск человека
+- story: поиск человека после приветствия
   steps:
   - intent: greet
   - action: utter_greet
   - intent: search_person
-  - action: action_search_person
+    entities: # Примеры сущностей для тестирования
+    - name: "Анна"
+    - department: "маркетинг"
+  - action: action_process_request # Заменяем на наше новое действие
 
 - story: поиск человека без приветствия
   steps:
     - intent: search_person
-    - action: action_search_person
+      entities:
+      - name: "Петр"
+    - action: action_process_request
+
+- story: поиск мероприятия
+  steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: search_event
+      entities:
+      - event_name: "корпоратив"
+      - date: "завтра"
+    - action: action_process_request
+
+# Можно добавить больше историй для других интентов и сценариев
+
+================================================================================
+
+# Файл: data/lookups/names.txt
+# Содержимое:
+# Имена
+Анна
+Петр
+Сергей
+Иван
+Алексей
+Ольга
+Виктор
+Мария
+Константин
+Елена
+Дмитрий
+Светлана
+Михаил
+Наталья
+Андрей
+Ирина
+
+# Фамилии
+Смирнов
+Иванов
+Кузнецов
+Попов
+Васильев
+Петров
+Соколов
+Михайлов
+Новиков
+Федоров
+Морозов
+Волков
+Алексеев
+Лебедев
+Семенов
+Егоров
+
+Анна Смирнова
+Петр Иванов
+Сергей Кузнецов
+Иван Попов
+Алексей Васильев
+Ольга Петрова
+Виктор Соколов
+Мария Михайлова
+Константин Новиков
+Елена Федорова
+Дмитрий Морозов
+Светлана Волкова
+Михаил Алексеев
+Наталья Лебедева
+Андрей Семенов
+Ирина Егорова
 
 
 ================================================================================
 
+# Файл: data/lookups/names.txt~
+# Содержимое:
+# Имена
+Анна
+Петр
+Сергей
+Иван
+Алексей
+Ольга
+Виктор
+Мария
+Константин
+Елена
+Дмитрий
+Светлана
+Михаил
+Наталья
+Андрей
+Ирина
+
+# Фамилии
+Смирнов
+Иванов
+Кузнецов
+Попов
+Васильев
+Петров
+Соколов
+Михайлов
+Новиков
+Федоров
+Морозов
+Волков
+Алексеев
+Лебедев
+Семенов
+Егоров
+
+Анна Смирнова
+Петр Иванов
+Сергей Кузнецов
+Иван Попов
+Алексей Васильев
+Ольга Петрова
+Виктор Соколов
+Мария Михайлова
+Константин Новиков
+Елена Федорова
+Дмитрий Морозов
+Светлана Волкова
+Михаил Алексеев
+Наталья Лебедева
+Андрей Семенов
+Ирина Егорова
+
+================================================================================
+
 # Файл: tests/test_stories.yml
+# Содержимое:
+stories:
+- story: happy path - greet and search person
+  steps:
+  - user: |
+      привет
+    intent: greet
+  - action: utter_greet
+  - user: |
+      Найди Виктора из отдела разработки
+    intent: search_person
+  - action: action_process_request # Убедитесь, что это ваше актуальное действие
+  # Можно добавить ассерты на извлеченные слоты, если они заполняются
+  # - slot_was_set:
+  #   - name: "Виктор"
+  #   - department: "разработки"
+
+- story: search person directly
+  steps:
+  - user: |
+      Контакты Ивана Сидорова
+    intent: search_person
+  - action: action_process_request
+
+- story: search event
+  steps:
+  - user: |
+      Какие мероприятия завтра?
+    intent: search_event
+  - action: action_process_request
+
+# ... и так далее для других интентов
+
+================================================================================
+
+# Файл: tests/test_stories.yml~
 # Содержимое:
 #### This file contains tests to evaluate that your bot behaves as expected.
 #### If you want to learn more, please see the docs: https://rasa.com/docs/rasa/testing-your-assistant

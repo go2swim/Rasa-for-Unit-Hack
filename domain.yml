@@ -24,7 +24,7 @@ intents:
         - task_name
         - project
         - date
-  - check_calendar_занятости:
+  - check_employment_calendar:
       use_entities:
         - name
         - date

@@ -19,7 +19,7 @@ rules:
 - rule: Process person search request
   steps:
   - intent: search_person
-  - action: action_process_request # Используем наше новое действие
+  - action: action_process_request
 
 - rule: Process event search request
   steps:
@@ -36,7 +36,7 @@ rules:
   - intent: check_task
   - action: action_process_request
 
-- rule: Process calendar check request
+- rule: Process calendar check request # <<< ИЗМЕНЕНО НАЗВАНИЕ ИНТЕНТА
   steps:
-  - intent: check_calendar_занятости # Имя интента как в domain.yml и nlu.yml
+  - intent: check_employment_calendar # <<< ИЗМЕНЕНО НАЗВАНИЕ ИНТЕНТА
   - action: action_process_request
