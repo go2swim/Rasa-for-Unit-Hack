@@ -1,0 +1,50 @@
+# The config recipe.
+# https://rasa.com/docs/rasa/model-configuration/
+recipe: default.v1
+
+# The assistant project unique identifier
+# This default value must be replaced with a unique assistant name within your deployment
+assistant_id: 20250517-014538-moderato-primer # Рекомендуется сменить на уникальное имя вашего проекта
+
+# Configuration for Rasa NLU.
+# https://rasa.com/docs/rasa/nlu/components/
+language: ru # <<< ИЗМЕНЕНО НА ru
+
+pipeline:
+   - name: WhitespaceTokenizer
+   - name: RegexFeaturizer
+   - name: LexicalSyntacticFeaturizer
+   - name: CountVectorsFeaturizer
+   - name: CountVectorsFeaturizer
+     analyzer: char_wb
+     min_ngram: 1
+     max_ngram: 4
+   - name: DIETClassifier
+     epochs: 100 # Для реального проекта может потребоваться больше эпох и данных
+     constrain_similarities: true
+   - name: EntitySynonymMapper
+   # ResponseSelector и FallbackClassifier не обязательны, если вы используете Rasa только для NLU
+   # Но они не мешают, если вы вдруг решите добавить диалоговые функции.
+   - name: ResponseSelector
+     epochs: 100
+     constrain_similarities: true
+   - name: FallbackClassifier
+     threshold: 0.5 # Можно настроить порог
+     ambiguity_threshold: 0.1
+
+# Configuration for Rasa Core.
+# https://rasa.com/docs/rasa/core/policies/
+# Если вы используете Rasa только для NLU, политики Core менее важны,
+# но RulePolicy полезна для прямого вызова action после интента.
+policies:
+   - name: MemoizationPolicy
+   - name: RulePolicy
+     # Включите это, если хотите, чтобы RulePolicy обрабатывала события от кастомных actions
+     # enable_fallback_prediction: True
+   - name: UnexpecTEDIntentPolicy
+     max_history: 5
+     epochs: 100
+   - name: TEDPolicy
+     max_history: 5
+     epochs: 100
+     constrain_similarities: true

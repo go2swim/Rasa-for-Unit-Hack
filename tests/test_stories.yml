@@ -1,0 +1,31 @@
+stories:
+- story: happy path - greet and search person
+  steps:
+  - user: |
+      привет
+    intent: greet
+  - action: utter_greet
+  - user: |
+      Найди Виктора из отдела разработки
+    intent: search_person
+  - action: action_process_request # Убедитесь, что это ваше актуальное действие
+  # Можно добавить ассерты на извлеченные слоты, если они заполняются
+  # - slot_was_set:
+  #   - name: "Виктор"
+  #   - department: "разработки"
+
+- story: search person directly
+  steps:
+  - user: |
+      Контакты Ивана Сидорова
+    intent: search_person
+  - action: action_process_request
+
+- story: search event
+  steps:
+  - user: |
+      Какие мероприятия завтра?
+    intent: search_event
+  - action: action_process_request
+
+# ... и так далее для других интентов

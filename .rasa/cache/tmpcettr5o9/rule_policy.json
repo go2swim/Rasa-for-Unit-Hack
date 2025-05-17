@@ -1,0 +1,40 @@
+{
+  "lookup": {
+    "rules": {
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"greet\"}}]": "utter_greet",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"greet\"}}, {\"prev_action\": {\"action_name\": \"utter_greet\"}, \"user\": {\"intent\": \"greet\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"search_event\"}}]": "action_process_request",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"search_event\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"search_event\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"find_birthday\"}}]": "action_process_request",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"find_birthday\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"find_birthday\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"bot_challenge\"}}]": "utter_iamabot",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"bot_challenge\"}}, {\"prev_action\": {\"action_name\": \"utter_iamabot\"}, \"user\": {\"intent\": \"bot_challenge\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"search_person\"}}]": "action_process_request",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"search_person\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"search_person\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"goodbye\"}}]": "utter_goodbye",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"goodbye\"}}, {\"prev_action\": {\"action_name\": \"utter_goodbye\"}, \"user\": {\"intent\": \"goodbye\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_calendar_\\u0437\\u0430\\u043d\\u044f\\u0442\\u043e\\u0441\\u0442\\u0438\"}}]": "action_process_request",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_calendar_\\u0437\\u0430\\u043d\\u044f\\u0442\\u043e\\u0441\\u0442\\u0438\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"check_calendar_\\u0437\\u0430\\u043d\\u044f\\u0442\\u043e\\u0441\\u0442\\u0438\"}}]": "action_listen",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_task\"}}]": "action_process_request",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_task\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"check_task\"}}]": "action_listen"
+    },
+    "rule_only_slots": [],
+    "rule_only_loops": [],
+    "rules_for_loop_unhappy_path": {},
+    "rules_not_in_stories": [
+      "predicting default action with intent session_start",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"bot_challenge\"}}, {\"prev_action\": {\"action_name\": \"utter_iamabot\"}, \"user\": {\"intent\": \"bot_challenge\"}}]",
+      "predicting default action with intent back",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"find_birthday\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"goodbye\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_task\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"check_task\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_calendar_\\u0437\\u0430\\u043d\\u044f\\u0442\\u043e\\u0441\\u0442\\u0438\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"check_calendar_\\u0437\\u0430\\u043d\\u044f\\u0442\\u043e\\u0441\\u0442\\u0438\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_calendar_\\u0437\\u0430\\u043d\\u044f\\u0442\\u043e\\u0441\\u0442\\u0438\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"goodbye\"}}, {\"prev_action\": {\"action_name\": \"utter_goodbye\"}, \"user\": {\"intent\": \"goodbye\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"check_task\"}}]",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"bot_challenge\"}}]",
+      "predicting default action with intent restart",
+      "[{\"prev_action\": {\"action_name\": \"action_listen\"}, \"user\": {\"intent\": \"find_birthday\"}}, {\"prev_action\": {\"action_name\": \"action_process_request\"}, \"user\": {\"intent\": \"find_birthday\"}}]"
+    ]
+  }
+}

@@ -1,0 +1,712 @@
+# Файл: .gitignore
+# Содержимое:
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# UV
+#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#uv.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/latest/usage/project/#working-with-version-control
+.pdm.toml
+.pdm-python
+.pdm-build/
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+#.idea/
+
+# Ruff stuff:
+.ruff_cache/
+
+# PyPI configuration file
+.pypirc
+
+
+================================================================================
+
+# Файл: config.yml
+# Содержимое:
+# The config recipe.
+# https://rasa.com/docs/rasa/model-configuration/
+recipe: default.v1
+
+# The assistant project unique identifier
+# This default value must be replaced with a unique assistant name within your deployment
+assistant_id: 20250517-014538-moderato-primer
+
+# Configuration for Rasa NLU.
+# https://rasa.com/docs/rasa/nlu/components/
+language: en
+
+pipeline:
+   - name: WhitespaceTokenizer
+   - name: RegexFeaturizer
+   - name: LexicalSyntacticFeaturizer
+   - name: CountVectorsFeaturizer
+   - name: CountVectorsFeaturizer
+     analyzer: char_wb
+     min_ngram: 1
+     max_ngram: 4
+   - name: DIETClassifier
+     epochs: 100
+     constrain_similarities: true
+   - name: EntitySynonymMapper
+   - name: ResponseSelector
+     epochs: 100
+     constrain_similarities: true
+   - name: FallbackClassifier
+     threshold: 0.3
+     ambiguity_threshold: 0.1
+
+# Configuration for Rasa Core.
+# https://rasa.com/docs/rasa/core/policies/
+policies:
+   - name: MemoizationPolicy
+   - name: RulePolicy
+   - name: UnexpecTEDIntentPolicy
+     max_history: 5
+     epochs: 100
+   - name: TEDPolicy
+     max_history: 5
+     epochs: 100
+     constrain_similarities: true
+
+
+================================================================================
+
+# Файл: config.yml~
+# Содержимое:
+# The config recipe.
+# https://rasa.com/docs/rasa/model-configuration/
+recipe: default.v1
+
+# The assistant project unique identifier
+# This default value must be replaced with a unique assistant name within your deployment
+assistant_id: 20250517-014538-moderato-primer
+
+# Configuration for Rasa NLU.
+# https://rasa.com/docs/rasa/nlu/components/
+language: en
+
+pipeline: null
+# # No configuration for the NLU pipeline was provided. The following default pipeline was used to train your model.
+# # If you'd like to customize it, uncomment and adjust the pipeline.
+# # See https://rasa.com/docs/rasa/tuning-your-model for more information.
+#   - name: WhitespaceTokenizer
+#   - name: RegexFeaturizer
+#   - name: LexicalSyntacticFeaturizer
+#   - name: CountVectorsFeaturizer
+#   - name: CountVectorsFeaturizer
+#     analyzer: char_wb
+#     min_ngram: 1
+#     max_ngram: 4
+#   - name: DIETClassifier
+#     epochs: 100
+#     constrain_similarities: true
+#   - name: EntitySynonymMapper
+#   - name: ResponseSelector
+#     epochs: 100
+#     constrain_similarities: true
+#   - name: FallbackClassifier
+#     threshold: 0.3
+#     ambiguity_threshold: 0.1
+
+# Configuration for Rasa Core.
+# https://rasa.com/docs/rasa/core/policies/
+policies: null
+   - name: MemoizationPolicy
+   - name: RulePolicy
+   - name: UnexpecTEDIntentPolicy
+     max_history: 5
+     epochs: 100
+   - name: TEDPolicy
+     max_history: 5
+     epochs: 100
+     constrain_similarities: true
+
+
+================================================================================
+
+# Файл: credentials.yml
+# Содержимое:
+# This file contains the credentials for the voice & chat platforms
+# which your bot is using.
+# https://rasa.com/docs/rasa/messaging-and-voice-channels
+
+rest:
+#  # you don't need to provide anything here - this channel doesn't
+#  # require any credentials
+
+
+#facebook:
+#  verify: "<verify>"
+#  secret: "<your secret>"
+#  page-access-token: "<your page access token>"
+
+#slack:
+#  slack_token: "<your slack token>"
+#  slack_channel: "<the slack channel>"
+#  slack_signing_secret: "<your slack signing secret>"
+
+#socketio:
+#  user_message_evt: <event name for user message>
+#  bot_message_evt: <event name for bot messages>
+#  session_persistence: <true/false>
+
+#mattermost:
+#  url: "https://<mattermost instance>/api/v4"
+#  token: "<bot token>"
+#  webhook_url: "<callback URL>"
+
+# This entry is needed if you are using Rasa Enterprise. The entry represents credentials
+# for the Rasa Enterprise "channel", i.e. Talk to your bot and Share with guest testers.
+rasa:
+  url: "http://localhost:5002/api"
+
+
+================================================================================
+
+# Файл: domain.yml
+# Содержимое:
+version: "3.1"
+
+intents:
+  - greet
+  - search_person
+
+entities:
+  - name
+  - department
+
+slots:
+  name:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: name
+      - type: from_text
+  department:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: department
+      - type: from_text
+
+responses:
+  utter_greet:
+    - text: "Привет! Кого ты хочешь найти?"
+  utter_ask_name:
+    - text: "Как зовут человека?"
+  utter_ask_department:
+    - text: "Из какого отдела?"
+  utter_found_person:
+    - text: "✅ Я нашёл информацию о {name} из отдела {department}."
+
+actions:
+  - action_search_person
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
+
+
+================================================================================
+
+# Файл: domain.yml~
+# Содержимое:
+version: "3.1"
+
+intents:
+  - greet
+  - search_person
+
+entities:
+  - name
+  - department
+
+slots:
+  name:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: name
+      - type: from_text  # на случай, если сущность не найдена
+  department:
+    type: text
+    mappings:
+      - type: from_entity
+        entity: department
+      - type: from_text
+
+responses:
+  utter_greet:
+    - text: "Привет! Кого ты хочешь найти?"
+  utter_ask_name:
+    - text: "Как зовут человека?"
+  utter_ask_department:
+    - text: "Из какого отдела?"
+  utter_found_person:
+    - text: "✅ Я нашёл информацию о {name} из отдела {department}."
+
+actions:
+  - action_search_person
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
+
+
+================================================================================
+
+# Файл: endpoints.yml
+# Содержимое:
+# This file contains the different endpoints your bot can use.
+
+# Server where the models are pulled from.
+# https://rasa.com/docs/rasa/model-storage#fetching-models-from-a-server
+
+#models:
+#  url: http://my-server.com/models/default_core@latest
+#  wait_time_between_pulls:  10   # [optional](default: 100)
+
+# Server which runs your custom actions.
+# https://rasa.com/docs/rasa/custom-actions
+
+action_endpoint:
+  url: "http://localhost:5055/webhook"
+
+# Tracker store which is used to store the conversations.
+# By default the conversations are stored in memory.
+# https://rasa.com/docs/rasa/tracker-stores
+
+#tracker_store:
+#    type: redis
+#    url: <host of the redis instance, e.g. localhost>
+#    port: <port of your redis instance, usually 6379>
+#    db: <number of your database within redis, e.g. 0>
+#    password: <password used for authentication>
+#    use_ssl: <whether or not the communication is encrypted, default false>
+
+#tracker_store:
+#    type: mongod
+#    url: <url to your mongo instance, e.g. mongodb://localhost:27017>
+#    db: <name of the db within your mongo instance, e.g. rasa>
+#    username: <username used for authentication>
+#    password: <password used for authentication>
+
+# Event broker which all conversation events should be streamed to.
+# https://rasa.com/docs/rasa/event-brokers
+
+#event_broker:
+#  url: localhost
+#  username: username
+#  password: password
+#  queue: queue
+
+
+================================================================================
+
+# Файл: endpoints.yml~
+# Содержимое:
+# This file contains the different endpoints your bot can use.
+
+# Server where the models are pulled from.
+# https://rasa.com/docs/rasa/model-storage#fetching-models-from-a-server
+
+#models:
+#  url: http://my-server.com/models/default_core@latest
+#  wait_time_between_pulls:  10   # [optional](default: 100)
+
+# Server which runs your custom actions.
+# https://rasa.com/docs/rasa/custom-actions
+
+#action_endpoint:
+#  url: "http://localhost:5055/webhook"
+
+# Tracker store which is used to store the conversations.
+# By default the conversations are stored in memory.
+# https://rasa.com/docs/rasa/tracker-stores
+
+#tracker_store:
+#    type: redis
+#    url: <host of the redis instance, e.g. localhost>
+#    port: <port of your redis instance, usually 6379>
+#    db: <number of your database within redis, e.g. 0>
+#    password: <password used for authentication>
+#    use_ssl: <whether or not the communication is encrypted, default false>
+
+#tracker_store:
+#    type: mongod
+#    url: <url to your mongo instance, e.g. mongodb://localhost:27017>
+#    db: <name of the db within your mongo instance, e.g. rasa>
+#    username: <username used for authentication>
+#    password: <password used for authentication>
+
+# Event broker which all conversation events should be streamed to.
+# https://rasa.com/docs/rasa/event-brokers
+
+#event_broker:
+#  url: localhost
+#  username: username
+#  password: password
+#  queue: queue
+
+
+================================================================================
+
+# Файл: README.md
+# Содержимое:
+# Rasa-for-Unit-Hack
+
+================================================================================
+
+# Файл: actions/actions.py
+# Содержимое:
+from typing import Any, Text, Dict, List
+from rasa_sdk import Action, Tracker
+from rasa_sdk.executor import CollectingDispatcher
+
+
+class ActionSearchPerson(Action):
+    def name(self) -> Text:
+        return "action_search_person"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+        name = next(tracker.get_latest_entity_values("name"), "неизвестно")
+        department = next(tracker.get_latest_entity_values("department"), "неизвестно")
+
+        dispatcher.utter_message(
+            text=f"Ищу человека по имени {name} из отдела {department}..."
+        )
+        dispatcher.utter_message(
+            text=f"✅ Я нашёл информацию о {name} из отдела {department}."
+        )
+        return []
+
+
+================================================================================
+
+# Файл: actions/__init__.py
+# Содержимое:
+
+
+================================================================================
+
+# Файл: data/nlu.yml
+# Содержимое:
+version: "3.1"
+
+nlu:
+  - intent: greet
+    examples: |
+      - привет
+      - здравствуй
+      - добрый день
+
+  - intent: search_person
+    examples: |
+      - Найди Анну из маркетинга
+      - Хочу найти Петра из IT
+      - Покажи мне Сергея из отдела продаж
+      - Где работает Иван?
+
+
+================================================================================
+
+# Файл: data/rules.yml
+# Содержимое:
+version: "3.1"
+
+rules:
+- rule: Say goodbye anytime the user says goodbye
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+- rule: Say 'I am a bot' anytime the user challenges
+  steps:
+  - intent: bot_challenge
+  - action: utter_iamabot
+
+- rule: Обработка поиска человека сразу
+  steps:
+  - intent: search_person
+  - action: action_search_person
+
+
+
+================================================================================
+
+# Файл: data/stories.yml
+# Содержимое:
+version: "3.1"
+
+stories:
+- story: поиск человека
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_person
+  - action: action_search_person
+
+- story: поиск человека без приветствия
+  steps:
+    - intent: search_person
+    - action: action_search_person
+
+
+================================================================================
+
+# Файл: tests/test_stories.yml
+# Содержимое:
+#### This file contains tests to evaluate that your bot behaves as expected.
+#### If you want to learn more, please see the docs: https://rasa.com/docs/rasa/testing-your-assistant
+
+stories:
+- story: happy path 1
+  steps:
+  - user: |
+      hello there!
+    intent: greet
+  - action: utter_greet
+  - user: |
+      amazing
+    intent: mood_great
+  - action: utter_happy
+
+- story: happy path 2
+  steps:
+  - user: |
+      hello there!
+    intent: greet
+  - action: utter_greet
+  - user: |
+      amazing
+    intent: mood_great
+  - action: utter_happy
+  - user: |
+      bye-bye!
+    intent: goodbye
+  - action: utter_goodbye
+
+- story: sad path 1
+  steps:
+  - user: |
+      hello
+    intent: greet
+  - action: utter_greet
+  - user: |
+      not good
+    intent: mood_unhappy
+  - action: utter_cheer_up
+  - action: utter_did_that_help
+  - user: |
+      yes
+    intent: affirm
+  - action: utter_happy
+
+- story: sad path 2
+  steps:
+  - user: |
+      hello
+    intent: greet
+  - action: utter_greet
+  - user: |
+      not good
+    intent: mood_unhappy
+  - action: utter_cheer_up
+  - action: utter_did_that_help
+  - user: |
+      not really
+    intent: deny
+  - action: utter_goodbye
+
+- story: sad path 3
+  steps:
+  - user: |
+      hi
+    intent: greet
+  - action: utter_greet
+  - user: |
+      very terrible
+    intent: mood_unhappy
+  - action: utter_cheer_up
+  - action: utter_did_that_help
+  - user: |
+      no
+    intent: deny
+  - action: utter_goodbye
+
+- story: say goodbye
+  steps:
+  - user: |
+      bye-bye!
+    intent: goodbye
+  - action: utter_goodbye
+
+- story: bot challenge
+  steps:
+  - user: |
+      are you a bot?
+    intent: bot_challenge
+  - action: utter_iamabot
+
+
+================================================================================
+

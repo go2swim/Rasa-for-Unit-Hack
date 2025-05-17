@@ -1,0 +1,51 @@
+{
+  "text": {
+    "привет": 15,
+    "здравствуй": 5,
+    "добрый": 4,
+    "день": 3,
+    "найди": 10,
+    "анну": 1,
+    "из": 7,
+    "маркетинга": 8,
+    "хочу": 19,
+    "найти": 11,
+    "петра": 13,
+    "it": 0,
+    "покажи": 14,
+    "мне": 9,
+    "сергея": 18,
+    "отдела": 12,
+    "продаж": 16,
+    "где": 2,
+    "работает": 17,
+    "иван": 6
+  },
+  "intent": {
+    "greet": 2,
+    "search_person": 3,
+    "bot_challenge": 0,
+    "goodbye": 1
+  },
+  "response": null,
+  "action_name": {
+    "action_listen": 6,
+    "action_restart": 7,
+    "action_session_start": 10,
+    "action_default_fallback": 4,
+    "action_deactivate_loop": 1,
+    "action_revert_fallback_events": 8,
+    "action_default_ask_affirmation": 2,
+    "action_default_ask_rephrase": 3,
+    "action_two_stage_fallback": 11,
+    "action_unlikely_intent": 12,
+    "action_back": 0,
+    "action_extract_slots": 5,
+    "action_search_person": 9,
+    "utter_goodbye": 13,
+    "utter_greet": 14,
+    "utter_iamabot": 15
+  },
+  "action_text": null,
+  "intent_response_key": null
+}

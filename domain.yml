@@ -1,0 +1,103 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - bot_challenge
+  - search_person:
+      use_entities:
+        - name
+        - department
+        - project
+  - search_event:
+      use_entities:
+        - event_name
+        - date
+  - find_birthday:
+      use_entities:
+        - name
+        - date
+  - check_task:
+      use_entities:
+        - task_name
+        - project
+        - date
+  - check_calendar_занятости:
+      use_entities:
+        - name
+        - date
+
+entities:
+  - name
+  - department
+  - project
+  - event_name
+  - date
+  - task_name
+
+slots:
+  name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: name
+  department:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: department
+  project:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: project
+  # ... (остальные слоты как в предыдущем ответе) ...
+  event_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_name
+  date:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: date
+  task_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_name
+
+responses:
+  utter_greet:
+    - text: "Привет! Чем могу помочь?"
+  utter_goodbye:
+    - text: "До свидания!"
+  utter_iamabot:
+    - text: "Я AI-ассистент."
+  utter_ask_details_person:
+    - text: "Можете уточнить имя, фамилию, отдел или проект сотрудника?"
+    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали."
+  # ... (остальные ответы как в предыдущем ответе) ...
+  utter_ask_details_event:
+    - text: "Какое мероприятие или дата вас интересует?"
+  utter_ask_details_task:
+    - text: "Уточните название задачи, проекта или дату."
+  utter_processing_request:
+    - text: "Понял, обрабатываю ваш запрос..."
+
+
+actions:
+  - action_process_request
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

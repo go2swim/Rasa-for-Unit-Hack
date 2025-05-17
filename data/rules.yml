@@ -1,0 +1,42 @@
+version: "3.1"
+
+rules:
+- rule: Say goodbye anytime the user says goodbye
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+- rule: Say 'I am a bot' anytime the user challenges
+  steps:
+  - intent: bot_challenge
+  - action: utter_iamabot
+
+- rule: Greet user
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- rule: Process person search request
+  steps:
+  - intent: search_person
+  - action: action_process_request # Используем наше новое действие
+
+- rule: Process event search request
+  steps:
+  - intent: search_event
+  - action: action_process_request
+
+- rule: Process birthday find request
+  steps:
+  - intent: find_birthday
+  - action: action_process_request
+
+- rule: Process task check request
+  steps:
+  - intent: check_task
+  - action: action_process_request
+
+- rule: Process calendar check request
+  steps:
+  - intent: check_calendar_занятости # Имя интента как в domain.yml и nlu.yml
+  - action: action_process_request

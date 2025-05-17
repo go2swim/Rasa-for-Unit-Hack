@@ -1,0 +1,31 @@
+version: "3.1"
+
+stories:
+- story: поиск человека после приветствия
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - intent: search_person
+    entities: # Примеры сущностей для тестирования
+    - name: "Анна"
+    - department: "маркетинг"
+  - action: action_process_request # Заменяем на наше новое действие
+
+- story: поиск человека без приветствия
+  steps:
+    - intent: search_person
+      entities:
+      - name: "Петр"
+    - action: action_process_request
+
+- story: поиск мероприятия
+  steps:
+    - intent: greet
+    - action: utter_greet
+    - intent: search_event
+      entities:
+      - event_name: "корпоратив"
+      - date: "завтра"
+    - action: action_process_request
+
+# Можно добавить больше историй для других интентов и сценариев
