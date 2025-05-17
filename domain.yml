@@ -10,12 +10,17 @@ intents:
       use_entities:
         - name
         - department
-        - project
+        - project # Теперь может иметь роль
+        - age_exact
+        - age_older_than
+        - age_younger_than
+        - birthday_specifier
+        - skill # Новая сущность
   - search_event:
       use_entities:
         - event_name
         - date
-  - find_birthday:
+  - find_birthday: # Этот интент остается для общего поиска ДР
       use_entities:
         - name
         - date
@@ -36,6 +41,11 @@ entities:
   - event_name
   - date
   - task_name
+  - age_exact
+  - age_older_than
+  - age_younger_than
+  - birthday_specifier
+  - skill
 
 slots:
   name:
@@ -56,7 +66,6 @@ slots:
     mappings:
       - type: from_entity
         entity: project
-  # ... (остальные слоты как в предыдущем ответе) ...
   event_name:
     type: text
     influence_conversation: false
@@ -75,6 +84,36 @@ slots:
     mappings:
       - type: from_entity
         entity: task_name
+  age_exact:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: age_exact
+  age_older_than:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: age_older_than
+  age_younger_than:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: age_younger_than
+  birthday_specifier:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: birthday_specifier
+  skill:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: skill
 
 responses:
   utter_greet:
@@ -84,16 +123,14 @@ responses:
   utter_iamabot:
     - text: "Я AI-ассистент."
   utter_ask_details_person:
-    - text: "Можете уточнить имя, фамилию, отдел или проект сотрудника?"
-    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали."
-  # ... (остальные ответы как в предыдущем ответе) ...
+    - text: "Можете уточнить имя, фамилию, отдел, проект, навыки, возраст или информацию о дне рождения сотрудника?"
+    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали, включая навыки, возраст или день рождения."
   utter_ask_details_event:
     - text: "Какое мероприятие или дата вас интересует?"
   utter_ask_details_task:
     - text: "Уточните название задачи, проекта или дату."
-  utter_processing_request:
+  utter_processing_request: # Общий ответ, который может быть использован перед вызовом action
     - text: "Понял, обрабатываю ваш запрос..."
-
 
 actions:
   - action_process_request

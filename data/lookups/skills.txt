@@ -1,0 +1,40 @@
+Python
+Java
+Spring
+Figma
+Kubernetes
+SQL
+JavaScript
+Go
+C++
+Photoshop
+Excel
+Power BI
+машинное обучение
+аналитика данных
+управление проектами
+английский язык
+Scrum
+Agile
+Vue.js
+React
+Angular
+Node.js
+PHP
+Ruby
+Scala
+Kotlin
+Swift
+Data Science
+DevOps
+QA
+Тестирование
+UX
+UI
+Product Management
+Project Management
+Business Analysis
+Системный анализ
+Frontend
+Backend
+Fullstack

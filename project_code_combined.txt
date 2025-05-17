@@ -178,6 +178,647 @@ cython_debug/
 
 ================================================================================
 
+# Файл: api_document.txt
+# Содержимое:
+Документация API: Сервис Распознавания Намерений и Сущностей (NLU)
+Обзор
+
+Данный API-сервис предназначен для анализа текста на естественном языке (русском) с целью определения намерения (intent) пользователя и извлечения из текста ключевых сущностей (entities). Это позволяет преобразовывать свободные текстовые запросы в структурированные данные, которые могут быть использованы для дальнейшей обработки, например, для формирования запросов к базе данных или выполнения определенных действий.
+
+Сервис построен на базе Rasa NLU.
+
+Базовый URL
+
+Для локальной разработки (когда Rasa сервер запущен на вашей машине):
+http://localhost:5005
+
+При развертывании на сервере, замените localhost:5005 на актуальный адрес и порт вашего Rasa сервера.
+
+Эндпоинт
+Анализ текста (NLU Parse)
+
+URL: /model/parse
+
+Метод: POST
+
+Описание: Принимает текстовую строку и возвращает JSON-объект с результатами NLU-анализа, включая наиболее вероятное намерение и список извлеченных сущностей.
+
+Headers:
+
+Content-Type: application/json
+
+Тело запроса (Request Body):
+JSON-объект с одним обязательным ключом text.
+
+{
+  "text": "Текстовый запрос пользователя"
+}
+
+
+text (string, required): Текстовая строка, которую необходимо проанализировать.
+
+Ответ (Response):
+
+При успехе (Код 200 OK):
+JSON-объект следующей структуры:
+
+{
+  "text": "Оригинальный текст запроса пользователя",
+  "intent": {
+    "name": "имя_наиболее_вероятного_интента",
+    "confidence": 0.9985123872756958
+  },
+  "entities": [
+    {
+      "entity": "тип_сущности_1",
+      "start": 6,  // начальный индекс сущности в "text"
+      "end": 20,   // конечный индекс сущности в "text"
+      "confidence_entity": 0.9701234567890123,
+      "value": "извлеченное_значение_сущности_1",
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "тип_сущности_2",
+      "start": 30,
+      "end": 40,
+      "confidence_entity": 0.9212345678901234,
+      "value": "извлеченное_значение_сущности_2",
+      "extractor": "DIETClassifier"
+    }
+    // ... другие извлеченные сущности
+  ],
+  "intent_ranking": [
+    {
+      "name": "имя_наиболее_вероятного_интента",
+      "confidence": 0.9985123872756958
+    },
+    {
+      "name": "имя_второго_по_вероятности_интента",
+      "confidence": 0.0012345678901234567
+    }
+    // ... остальные интенты с их уверенностью
+  ]
+  // ... могут присутствовать другие поля, специфичные для Rasa,
+  // но для базового использования достаточно указанных выше.
+}
+
+Описание полей ответа:
+
+text (string): Оригинальный текст, отправленный в запросе.
+
+intent (object): Объект, описывающий наиболее вероятное намерение.
+
+name (string): Имя распознанного намерения (например, search_person, greet).
+
+confidence (float): Уровень уверенности модели в этом намерении (от 0.0 до 1.0).
+
+entities (array of objects): Массив объектов, где каждый объект представляет извлеченную сущность. Если сущности не найдены, массив будет пустым.
+
+entity (string): Тип сущности (например, name, department, date).
+
+start (integer): Начальный индекс (с 0) первого символа значения сущности в исходной строке text.
+
+end (integer): Конечный индекс (не включая) последнего символа значения сущности в исходной строке text.
+
+confidence_entity (float): Уровень уверенности модели в извлечении этой сущности.
+
+value (string): Извлеченное текстовое значение сущности.
+
+extractor (string): Имя компонента Rasa, который извлек эту сущность (например, DIETClassifier, RegexFeaturizer).
+
+intent_ranking (array of objects): Массив всех возможных намерений, отсортированных по убыванию уверенности. Полезно для отладки или реализации более сложной логики.
+
+При ошибке: Стандартные HTTP-коды ошибок (например, 4xx, 5xx) с JSON-телом, описывающим ошибку (зависит от конфигурации Rasa).
+
+Текущие поддерживаемые Интенты и Сущности
+
+На данный момент модель обучена распознавать следующие основные интенты и сущности (согласно domain.yml):
+
+Интенты (Намерения):
+
+greet: Приветствие.
+
+goodbye: Прощание.
+
+affirm: Утвердительный ответ.
+
+deny: Отрицательный ответ.
+
+bot_challenge: Проверка, является ли собеседник ботом.
+
+search_person: Запрос на поиск сотрудника.
+
+search_event: Запрос на поиск мероприятия.
+
+find_birthday: Запрос на поиск дней рождения.
+
+check_task: Запрос на проверку задач.
+
+check_employment_calendar: Запрос на проверку календаря занятости.
+
+Сущности (Entities):
+
+name: Имя, фамилия или ФИО человека.
+
+department: Название отдела.
+
+project: Название проекта.
+
+event_name: Название мероприятия.
+
+date: Дата или период времени (например, "завтра", "в июне", "25 мая").
+
+task_name: Название задачи.
+
+(room_name): Упоминается в примерах NLU для check_employment_calendar, но не добавлена в секцию entities в domain.yml. Если планируется использовать, нужно добавить.
+
+Примеры Запросов и Ответов
+Пример 1: Поиск сотрудника
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Найди Иванова Петра из отдела разработки"
+  }'
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Найди Иванова Петра из отдела разработки",
+  "intent": {
+    "name": "search_person",
+    "confidence": 0.99...
+  },
+  "entities": [
+    {
+      "entity": "name",
+      "start": 6,
+      "end": 19,
+      "confidence_entity": 0.98...,
+      "value": "Иванова Петра",
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "department",
+      "start": 29,
+      "end": 39,
+      "confidence_entity": 0.95...,
+      "value": "разработки",
+      "extractor": "DIETClassifier"
+    }
+  ],
+  "intent_ranking": [
+    { "name": "search_person", "confidence": 0.99... },
+    // ...
+  ]
+}
+
+Пример 2: Поиск мероприятия
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Какие корпоративы будут на следующей неделе?"
+  }'
+
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Какие корпоративы будут на следующей неделе?",
+  "intent": {
+    "name": "search_event",
+    "confidence": 0.97...
+  },
+  "entities": [
+    {
+      "entity": "event_name",
+      "start": 6,
+      "end": 17,
+      "confidence_entity": 0.91...,
+      "value": "корпоративы",
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "date",
+      "start": 27,
+      "end": 44,
+      "confidence_entity": 0.89...,
+      "value": "на следующей неделе", // Точное извлечение даты зависит от компонентов, например, Duckling
+      "extractor": "DIETClassifier"  // или другой подходящий экстрактор
+    }
+  ],
+  "intent_ranking": [
+    { "name": "search_event", "confidence": 0.97... },
+    // ...
+  ]
+}
+
+
+Пример 3: Простой запрос без сущностей
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Привет"
+  }'
+
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Привет",
+  "intent": {
+    "name": "greet",
+    "confidence": 0.99...
+  },
+  "entities": [], // Сущности не найдены
+  "intent_ranking": [
+    { "name": "greet", "confidence": 0.99... },
+    // ...
+  ]
+}
+
+Пример 4: Запрос с синонимом
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Где Женя из маркетинга?"
+  }'
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Где Женя из маркетинга?",
+  "intent": {
+    "name": "search_person",
+    "confidence": 0.98...
+  },
+  "entities": [
+    {
+      "entity": "name",
+      "start": 4,
+      "end": 8,
+      "confidence_entity": 0.96...,
+      "value": "Евгений", // EntitySynonymMapper заменил "Женя" на "Евгений"
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "department",
+      "start": 12,
+      "end": 22,
+      "confidence_entity": 0.93...,
+      "value": "маркетинга",
+      "extractor": "DIETClassifier"
+    }
+  ],
+  "intent_ranking": [
+    { "name": "search_person", "confidence": 0.98... },
+    // ...
+  ]
+}
+
+================================================================================
+
+# Файл: api_document.txt~
+# Содержимое:
+Документация API: Сервис Распознавания Намерений и Сущностей (NLU)
+Обзор
+
+Данный API-сервис предназначен для анализа текста на естественном языке (русском) с целью определения намерения (intent) пользователя и извлечения из текста ключевых сущностей (entities). Это позволяет преобразовывать свободные текстовые запросы в структурированные данные, которые могут быть использованы для дальнейшей обработки, например, для формирования запросов к базе данных или выполнения определенных действий.
+
+Сервис построен на базе Rasa NLU.
+
+Базовый URL
+
+Для локальной разработки (когда Rasa сервер запущен на вашей машине):
+http://localhost:5005
+
+При развертывании на сервере, замените localhost:5005 на актуальный адрес и порт вашего Rasa сервера.
+
+Эндпоинт
+Анализ текста (NLU Parse)
+
+URL: /model/parse
+
+Метод: POST
+
+Описание: Принимает текстовую строку и возвращает JSON-объект с результатами NLU-анализа, включая наиболее вероятное намерение и список извлеченных сущностей.
+
+Headers:
+
+Content-Type: application/json
+
+Тело запроса (Request Body):
+JSON-объект с одним обязательным ключом text.
+
+{
+  "text": "Текстовый запрос пользователя"
+}
+
+
+text (string, required): Текстовая строка, которую необходимо проанализировать.
+
+Ответ (Response):
+
+При успехе (Код 200 OK):
+JSON-объект следующей структуры:
+
+{
+  "text": "Оригинальный текст запроса пользователя",
+  "intent": {
+    "name": "имя_наиболее_вероятного_интента",
+    "confidence": 0.9985123872756958
+  },
+  "entities": [
+    {
+      "entity": "тип_сущности_1",
+      "start": 6,  // начальный индекс сущности в "text"
+      "end": 20,   // конечный индекс сущности в "text"
+      "confidence_entity": 0.9701234567890123,
+      "value": "извлеченное_значение_сущности_1",
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "тип_сущности_2",
+      "start": 30,
+      "end": 40,
+      "confidence_entity": 0.9212345678901234,
+      "value": "извлеченное_значение_сущности_2",
+      "extractor": "DIETClassifier"
+    }
+    // ... другие извлеченные сущности
+  ],
+  "intent_ranking": [
+    {
+      "name": "имя_наиболее_вероятного_интента",
+      "confidence": 0.9985123872756958
+    },
+    {
+      "name": "имя_второго_по_вероятности_интента",
+      "confidence": 0.0012345678901234567
+    }
+    // ... остальные интенты с их уверенностью
+  ]
+  // ... могут присутствовать другие поля, специфичные для Rasa,
+  // но для базового использования достаточно указанных выше.
+}
+
+Описание полей ответа:
+
+text (string): Оригинальный текст, отправленный в запросе.
+
+intent (object): Объект, описывающий наиболее вероятное намерение.
+
+name (string): Имя распознанного намерения (например, search_person, greet).
+
+confidence (float): Уровень уверенности модели в этом намерении (от 0.0 до 1.0).
+
+entities (array of objects): Массив объектов, где каждый объект представляет извлеченную сущность. Если сущности не найдены, массив будет пустым.
+
+entity (string): Тип сущности (например, name, department, date).
+
+start (integer): Начальный индекс (с 0) первого символа значения сущности в исходной строке text.
+
+end (integer): Конечный индекс (не включая) последнего символа значения сущности в исходной строке text.
+
+confidence_entity (float): Уровень уверенности модели в извлечении этой сущности.
+
+value (string): Извлеченное текстовое значение сущности.
+
+extractor (string): Имя компонента Rasa, который извлек эту сущность (например, DIETClassifier, RegexFeaturizer).
+
+intent_ranking (array of objects): Массив всех возможных намерений, отсортированных по убыванию уверенности. Полезно для отладки или реализации более сложной логики.
+
+При ошибке: Стандартные HTTP-коды ошибок (например, 4xx, 5xx) с JSON-телом, описывающим ошибку (зависит от конфигурации Rasa).
+
+Текущие поддерживаемые Интенты и Сущности
+
+На данный момент модель обучена распознавать следующие основные интенты и сущности (согласно domain.yml):
+
+Интенты (Намерения):
+
+greet: Приветствие.
+
+goodbye: Прощание.
+
+affirm: Утвердительный ответ.
+
+deny: Отрицательный ответ.
+
+bot_challenge: Проверка, является ли собеседник ботом.
+
+search_person: Запрос на поиск сотрудника.
+
+search_event: Запрос на поиск мероприятия.
+
+find_birthday: Запрос на поиск дней рождения.
+
+check_task: Запрос на проверку задач.
+
+check_employment_calendar: Запрос на проверку календаря занятости.
+
+Сущности (Entities):
+
+name: Имя, фамилия или ФИО человека.
+
+department: Название отдела.
+
+project: Название проекта.
+
+event_name: Название мероприятия.
+
+date: Дата или период времени (например, "завтра", "в июне", "25 мая").
+
+task_name: Название задачи.
+
+(room_name): Упоминается в примерах NLU для check_employment_calendar, но не добавлена в секцию entities в domain.yml. Если планируется использовать, нужно добавить.
+
+Примеры Запросов и Ответов
+Пример 1: Поиск сотрудника
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Найди Иванова Петра из отдела разработки"
+  }'
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Найди Иванова Петра из отдела разработки",
+  "intent": {
+    "name": "search_person",
+    "confidence": 0.99...
+  },
+  "entities": [
+    {
+      "entity": "name",
+      "start": 6,
+      "end": 19,
+      "confidence_entity": 0.98...,
+      "value": "Иванова Петра",
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "department",
+      "start": 29,
+      "end": 39,
+      "confidence_entity": 0.95...,
+      "value": "разработки",
+      "extractor": "DIETClassifier"
+    }
+  ],
+  "intent_ranking": [
+    { "name": "search_person", "confidence": 0.99... },
+    // ...
+  ]
+}
+
+Пример 2: Поиск мероприятия
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Какие корпоративы будут на следующей неделе?"
+  }'
+
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Какие корпоративы будут на следующей неделе?",
+  "intent": {
+    "name": "search_event",
+    "confidence": 0.97...
+  },
+  "entities": [
+    {
+      "entity": "event_name",
+      "start": 6,
+      "end": 17,
+      "confidence_entity": 0.91...,
+      "value": "корпоративы",
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "date",
+      "start": 27,
+      "end": 44,
+      "confidence_entity": 0.89...,
+      "value": "на следующей неделе", // Точное извлечение даты зависит от компонентов, например, Duckling
+      "extractor": "DIETClassifier"  // или другой подходящий экстрактор
+    }
+  ],
+  "intent_ranking": [
+    { "name": "search_event", "confidence": 0.97... },
+    // ...
+  ]
+}
+
+
+Пример 3: Простой запрос без сущностей
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Привет"
+  }'
+
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Привет",
+  "intent": {
+    "name": "greet",
+    "confidence": 0.99...
+  },
+  "entities": [], // Сущности не найдены
+  "intent_ranking": [
+    { "name": "greet", "confidence": 0.99... },
+    // ...
+  ]
+}
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Json
+IGNORE_WHEN_COPYING_END
+Пример 4: Запрос с синонимом
+
+Запрос:
+
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Где Женя из маркетинга?"
+  }'
+IGNORE_WHEN_COPYING_START
+content_copy
+download
+Use code with caution.
+Bash
+IGNORE_WHEN_COPYING_END
+
+Ожидаемый ответ (структура):
+
+{
+  "text": "Где Женя из маркетинга?",
+  "intent": {
+    "name": "search_person",
+    "confidence": 0.98...
+  },
+  "entities": [
+    {
+      "entity": "name",
+      "start": 4,
+      "end": 8,
+      "confidence_entity": 0.96...,
+      "value": "Евгений", // EntitySynonymMapper заменил "Женя" на "Евгений"
+      "extractor": "DIETClassifier"
+    },
+    {
+      "entity": "department",
+      "start": 12,
+      "end": 22,
+      "confidence_entity": 0.93...,
+      "value": "маркетинга",
+      "extractor": "DIETClassifier"
+    }
+  ],
+  "intent_ranking": [
+    { "name": "search_person", "confidence": 0.98... },
+    // ...
+  ]
+}
+
+================================================================================
+
 # Файл: config.yml
 # Содержимое:
 # The config recipe.
@@ -504,7 +1145,55 @@ session_config:
 
 action_endpoint:
  url: "http://localhost:5055/webhook"
- url: "http://localhost:5005/model/parse"
+
+# Tracker store which is used to store the conversations.
+# By default the conversations are stored in memory.
+# https://rasa.com/docs/rasa/tracker-stores
+
+#tracker_store:
+#    type: redis
+#    url: <host of the redis instance, e.g. localhost>
+#    port: <port of your redis instance, usually 6379>
+#    db: <number of your database within redis, e.g. 0>
+#    password: <password used for authentication>
+#    use_ssl: <whether or not the communication is encrypted, default false>
+
+#tracker_store:
+#    type: mongod
+#    url: <url to your mongo instance, e.g. mongodb://localhost:27017>
+#    db: <name of the db within your mongo instance, e.g. rasa>
+#    username: <username used for authentication>
+#    password: <password used for authentication>
+
+# Event broker which all conversation events should be streamed to.
+# https://rasa.com/docs/rasa/event-brokers
+
+#event_broker:
+#  url: localhost
+#  username: username
+#  password: password
+#  queue: queue
+
+================================================================================
+
+# Файл: endpoints.yml~
+# Содержимое:
+# This file contains the different endpoints your bot can use.
+
+# Server where the models are pulled from.
+# https://rasa.com/docs/rasa/model-storage#fetching-models-from-a-server
+
+#models:
+#  url: http://my-server.com/models/default_core@latest
+#  wait_time_between_pulls:  10   # [optional](default: 100)
+
+# Server which runs your custom actions.
+# https://rasa.com/docs/rasa/custom-actions
+
+action_endpoint:
+  urls:
+    - "http://localhost:5055/webhook"
+    - "http://localhost:5005/model/parse"
 
 # Tracker store which is used to store the conversations.
 # By default the conversations are stored in memory.
@@ -537,6 +1226,36 @@ action_endpoint:
 ================================================================================
 
 # Файл: README.md
+# Содержимое:
+# Rasa-for-Unit-Hack
+
+python 3.9
+
+````
+pip install rasa[spacy]
+pip install rasa-sdk
+pip install spacy
+python -m spacy download ru_core_news_sm
+pip install rasa[transformers] transformers
+````
+
+Запуск api (для бека):
+````
+rasa train (один раз после обновления репоза)
+rasa run --enable-api --cors "*" -p 5005
+````
+
+Запуск:
+````
+rasa train
+rasa run actions
+rasa shell
+````
+
+
+================================================================================
+
+# Файл: README.md~
 # Содержимое:
 # Rasa-for-Unit-Hack
 

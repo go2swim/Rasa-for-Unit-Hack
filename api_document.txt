@@ -1,12 +1,10 @@
 Документация API: Сервис Распознавания Намерений и Сущностей (NLU)
+
 Обзор
-
 Данный API-сервис предназначен для анализа текста на естественном языке (русском) с целью определения намерения (intent) пользователя и извлечения из текста ключевых сущностей (entities). Это позволяет преобразовывать свободные текстовые запросы в структурированные данные, которые могут быть использованы для дальнейшей обработки, например, для формирования запросов к базе данных или выполнения определенных действий.
-
 Сервис построен на базе Rasa NLU.
 
 Базовый URL
-
 Для локальной разработки (когда Rasa сервер запущен на вашей машине):
 http://localhost:5005
 
@@ -14,46 +12,39 @@ http://localhost:5005
 
 Эндпоинт
 Анализ текста (NLU Parse)
-
 URL: /model/parse
-
 Метод: POST
-
 Описание: Принимает текстовую строку и возвращает JSON-объект с результатами NLU-анализа, включая наиболее вероятное намерение и список извлеченных сущностей.
 
 Headers:
-
-Content-Type: application/json
+    Content-Type: application/json
 
 Тело запроса (Request Body):
 JSON-объект с одним обязательным ключом text.
-
 {
   "text": "Текстовый запрос пользователя"
 }
-
-
-text (string, required): Текстовая строка, которую необходимо проанализировать.
+    text (string, required): Текстовая строка, которую необходимо проанализировать.
 
 Ответ (Response):
-
 При успехе (Код 200 OK):
 JSON-объект следующей структуры:
-
 {
   "text": "Оригинальный текст запроса пользователя",
   "intent": {
+    "id": -7369890801234567890, // Пример ID, может меняться
     "name": "имя_наиболее_вероятного_интента",
     "confidence": 0.9985123872756958
   },
   "entities": [
     {
       "entity": "тип_сущности_1",
-      "start": 6,  // начальный индекс сущности в "text"
-      "end": 20,   // конечный индекс сущности в "text"
+      "start": 6,
+      "end": 20,
       "confidence_entity": 0.9701234567890123,
       "value": "извлеченное_значение_сущности_1",
-      "extractor": "DIETClassifier"
+      "extractor": "DIETClassifier",
+      "processors": ["EntitySynonymMapper"] // Если применялся синонимайзер
     },
     {
       "entity": "тип_сущности_2",
@@ -61,250 +52,243 @@ JSON-объект следующей структуры:
       "end": 40,
       "confidence_entity": 0.9212345678901234,
       "value": "извлеченное_значение_сущности_2",
-      "extractor": "DIETClassifier"
+      "extractor": "DIETClassifier",
+      "role": "имя_роли" // Если для сущности была определена роль
     }
     // ... другие извлеченные сущности
   ],
   "intent_ranking": [
     {
+      "id": -7369890801234567890,
       "name": "имя_наиболее_вероятного_интента",
       "confidence": 0.9985123872756958
     },
     {
+      "id": 1234567890123456789,
       "name": "имя_второго_по_вероятности_интента",
       "confidence": 0.0012345678901234567
     }
     // ... остальные интенты с их уверенностью
-  ]
-  // ... могут присутствовать другие поля, специфичные для Rasa,
-  // но для базового использования достаточно указанных выше.
+  ],
+  "response_selector": { // Информация от ResponseSelector, если он используется
+    "all_retrieval_intents": [],
+    "default": {
+      "response": {
+        "id": null,
+        "responses": null,
+        "response_templates": null,
+        "confidence": 0.0,
+        "intent_response_key": null,
+        "utter_action": "utter_None",
+        "template_name": "utter_None"
+      },
+      "ranking": []
+    }
+  }
 }
 
 Описание полей ответа:
-
-text (string): Оригинальный текст, отправленный в запросе.
-
-intent (object): Объект, описывающий наиболее вероятное намерение.
-
-name (string): Имя распознанного намерения (например, search_person, greet).
-
-confidence (float): Уровень уверенности модели в этом намерении (от 0.0 до 1.0).
-
-entities (array of objects): Массив объектов, где каждый объект представляет извлеченную сущность. Если сущности не найдены, массив будет пустым.
-
-entity (string): Тип сущности (например, name, department, date).
-
-start (integer): Начальный индекс (с 0) первого символа значения сущности в исходной строке text.
-
-end (integer): Конечный индекс (не включая) последнего символа значения сущности в исходной строке text.
-
-confidence_entity (float): Уровень уверенности модели в извлечении этой сущности.
-
-value (string): Извлеченное текстовое значение сущности.
-
-extractor (string): Имя компонента Rasa, который извлек эту сущность (например, DIETClassifier, RegexFeaturizer).
-
-intent_ranking (array of objects): Массив всех возможных намерений, отсортированных по убыванию уверенности. Полезно для отладки или реализации более сложной логики.
+    text (string): Оригинальный текст, отправленный в запросе.
+    intent (object): Объект, описывающий наиболее вероятное намерение.
+        id (long): Уникальный идентификатор интента.
+        name (string): Имя распознанного намерения (например, search_person, greet).
+        confidence (float): Уровень уверенности модели в этом намерении (от 0.0 до 1.0).
+    entities (array of objects): Массив объектов, где каждый объект представляет извлеченную сущность. Если сущности не найдены, массив будет пустым.
+        entity (string): Тип сущности (например, name, department, date, skill).
+        start (integer): Начальный индекс (с 0) первого символа значения сущности в исходной строке text.
+        end (integer): Конечный индекс (не включая) последнего символа значения сущности в исходной строке text.
+        confidence_entity (float): Уровень уверенности модели в извлечении этой сущности.
+        value (string): Извлеченное текстовое значение сущности. После применения EntitySynonymMapper здесь будет каноническое значение.
+        extractor (string): Имя компонента Rasa, который извлек эту сущность (например, DIETClassifier, RegexFeaturizer, DucklingEntityExtractor).
+        processors (array of string, optional): Список обработчиков, которые модифицировали сущность (например, EntitySynonymMapper).
+        role (string, optional): Если для сущности была определена и извлечена роль (например, "lead" для сущности "project"), она будет указана здесь.
+    intent_ranking (array of objects): Массив всех возможных намерений, отсортированных по убыванию уверенности. Полезно для отладки или реализации более сложной логики.
+        id (long): Уникальный идентификатор интента.
+        name (string): Имя интента.
+        confidence (float): Уровень уверенности.
+    response_selector (object): Информация от компонента ResponseSelector (если используется для выбора ответа).
 
 При ошибке: Стандартные HTTP-коды ошибок (например, 4xx, 5xx) с JSON-телом, описывающим ошибку (зависит от конфигурации Rasa).
 
 Текущие поддерживаемые Интенты и Сущности
-
 На данный момент модель обучена распознавать следующие основные интенты и сущности (согласно domain.yml):
 
-Интенты (Намерения):
+*   Интенты (Намерения):
+    *   `greet`: Приветствие.
+    *   `goodbye`: Прощание.
+    *   `affirm`: Утвердительный ответ.
+    *   `deny`: Отрицательный ответ.
+    *   `bot_challenge`: Проверка, является ли собеседник ботом.
+    *   `search_person`: Запрос на поиск сотрудника.
+        *   Может включать фильтрацию по имени, отделу, проекту (включая роль "ответственный за проект"), навыкам/технологиям, точному возрасту, возрасту старше/младше, спецификатору дня рождения (включая "скоро", "на этой неделе").
+    *   `search_event`: Запрос на поиск мероприятия.
+    *   `find_birthday`: Запрос на поиск дней рождения (общий, не как атрибут конкретного сотрудника).
+    *   `check_task`: Запрос на проверку задач.
+    *   `check_employment_calendar`: Запрос на проверку календаря занятости.
 
-greet: Приветствие.
-
-goodbye: Прощание.
-
-affirm: Утвердительный ответ.
-
-deny: Отрицательный ответ.
-
-bot_challenge: Проверка, является ли собеседник ботом.
-
-search_person: Запрос на поиск сотрудника.
-
-search_event: Запрос на поиск мероприятия.
-
-find_birthday: Запрос на поиск дней рождения.
-
-check_task: Запрос на проверку задач.
-
-check_employment_calendar: Запрос на проверку календаря занятости.
-
-Сущности (Entities):
-
-name: Имя, фамилия или ФИО человека.
-
-department: Название отдела.
-
-project: Название проекта.
-
-event_name: Название мероприятия.
-
-date: Дата или период времени (например, "завтра", "в июне", "25 мая").
-
-task_name: Название задачи.
-
-(room_name): Упоминается в примерах NLU для check_employment_calendar, но не добавлена в секцию entities в domain.yml. Если планируется использовать, нужно добавить.
+*   Сущности (Entities):
+    *   `name`: Имя, фамилия или ФИО человека.
+    *   `department`: Название отдела.
+    *   `project`: Название проекта. Может иметь роль `lead`, если пользователь ищет ответственного за проект.
+    *   `skill`: Навык или технология (например, "Python", "Java", "дизайн").
+    *   `event_name`: Название мероприятия.
+    *   `date`: Дата или период времени (например, "завтра", "в июне", "25 мая"). Распознается DIETClassifier, для более точного распознавания дат рекомендуется настроить DucklingHTTPExtractor.
+    *   `task_name`: Название задачи.
+    *   `age_exact`: Точный возраст (число).
+    *   `age_older_than`: Возраст для условия "старше чем" (число).
+    *   `age_younger_than`: Возраст для условия "младше чем" (число).
+    *   `birthday_specifier`: Описание дня рождения или периода (например, "в июне", "завтра", "скоро", "на этой неделе"). Может пересекаться с `date`.
 
 Примеры Запросов и Ответов
+
 Пример 1: Поиск сотрудника
-
 Запрос:
-
 curl -X POST \
   http://localhost:5005/model/parse \
   -H 'Content-Type: application/json' \
   -d '{
     "text": "Найди Иванова Петра из отдела разработки"
   }'
-
 Ожидаемый ответ (структура):
-
 {
   "text": "Найди Иванова Петра из отдела разработки",
-  "intent": {
-    "name": "search_person",
-    "confidence": 0.99...
-  },
+  "intent": { "name": "search_person", "confidence": 0.99... },
   "entities": [
-    {
-      "entity": "name",
-      "start": 6,
-      "end": 19,
-      "confidence_entity": 0.98...,
-      "value": "Иванова Петра",
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "department",
-      "start": 29,
-      "end": 39,
-      "confidence_entity": 0.95...,
-      "value": "разработки",
-      "extractor": "DIETClassifier"
-    }
-  ],
-  "intent_ranking": [
-    { "name": "search_person", "confidence": 0.99... },
-    // ...
-  ]
+    { "entity": "name", "value": "Иванова Петра", ... },
+    { "entity": "department", "value": "разработки", ... }
+  ], ...
 }
 
 Пример 2: Поиск мероприятия
-
 Запрос:
-
 curl -X POST \
   http://localhost:5005/model/parse \
   -H 'Content-Type: application/json' \
   -d '{
     "text": "Какие корпоративы будут на следующей неделе?"
   }'
-
-
 Ожидаемый ответ (структура):
-
 {
   "text": "Какие корпоративы будут на следующей неделе?",
-  "intent": {
-    "name": "search_event",
-    "confidence": 0.97...
-  },
+  "intent": { "name": "search_event", "confidence": 0.97... },
   "entities": [
-    {
-      "entity": "event_name",
-      "start": 6,
-      "end": 17,
-      "confidence_entity": 0.91...,
-      "value": "корпоративы",
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "date",
-      "start": 27,
-      "end": 44,
-      "confidence_entity": 0.89...,
-      "value": "на следующей неделе", // Точное извлечение даты зависит от компонентов, например, Duckling
-      "extractor": "DIETClassifier"  // или другой подходящий экстрактор
-    }
-  ],
-  "intent_ranking": [
-    { "name": "search_event", "confidence": 0.97... },
-    // ...
-  ]
+    { "entity": "event_name", "value": "корпоративы", ... },
+    { "entity": "date", "value": "на следующей неделе", ... }
+  ], ...
 }
 
-
 Пример 3: Простой запрос без сущностей
-
 Запрос:
-
 curl -X POST \
   http://localhost:5005/model/parse \
   -H 'Content-Type: application/json' \
-  -d '{
-    "text": "Привет"
-  }'
-
-
+  -d '{ "text": "Привет" }'
 Ожидаемый ответ (структура):
-
 {
   "text": "Привет",
-  "intent": {
-    "name": "greet",
-    "confidence": 0.99...
-  },
-  "entities": [], // Сущности не найдены
-  "intent_ranking": [
-    { "name": "greet", "confidence": 0.99... },
-    // ...
-  ]
+  "intent": { "name": "greet", "confidence": 0.99... },
+  "entities": [], ...
 }
 
 Пример 4: Запрос с синонимом
-
 Запрос:
-
 curl -X POST \
   http://localhost:5005/model/parse \
   -H 'Content-Type: application/json' \
-  -d '{
-    "text": "Где Женя из маркетинга?"
-  }'
-
+  -d '{ "text": "Где Женя из маркетинга?" }'
 Ожидаемый ответ (структура):
-
 {
   "text": "Где Женя из маркетинга?",
-  "intent": {
-    "name": "search_person",
-    "confidence": 0.98...
-  },
+  "intent": { "name": "search_person", "confidence": 0.98... },
   "entities": [
-    {
-      "entity": "name",
-      "start": 4,
-      "end": 8,
-      "confidence_entity": 0.96...,
-      "value": "Евгений", // EntitySynonymMapper заменил "Женя" на "Евгений"
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "department",
-      "start": 12,
-      "end": 22,
-      "confidence_entity": 0.93...,
-      "value": "маркетинга",
-      "extractor": "DIETClassifier"
-    }
-  ],
-  "intent_ranking": [
-    { "name": "search_person", "confidence": 0.98... },
-    // ...
-  ]
+    { "entity": "name", "value": "Евгений", ... }, // EntitySynonymMapper заменил "Женя" на "Евгений"
+    { "entity": "department", "value": "маркетинга", ... }
+  ], ...
 }
+
+Пример 5: Поиск сотрудника с указанием возраста
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Найди Марию из IT которой 30 лет" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Найди Марию из IT которой 30 лет",
+  "intent": { "name": "search_person", "confidence": 0.99... },
+  "entities": [
+    { "entity": "name", "value": "Марию", ... },
+    { "entity": "department", "value": "IT", ... },
+    { "entity": "age_exact", "value": "30", ... }
+  ], ...
+}
+
+Пример 6: Поиск сотрудника с указанием дня рождения и возраста
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Покажи сотрудников, у которых день рождения завтра и они старше 25" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Покажи сотрудников, у которых день рождения завтра и они старше 25",
+  "intent": { "name": "search_person", "confidence": 0.98... },
+  "entities": [
+    { "entity": "birthday_specifier", "value": "завтра", ... },
+    { "entity": "age_older_than", "value": "25", ... }
+  ], ...
+}
+
+Пример 7: Поиск ответственного за проект
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Кто отвечает за проект SpringSale в маркетинге?" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Кто отвечает за проект SpringSale в маркетинге?",
+  "intent": { "name": "search_person", "confidence": 0.99... },
+  "entities": [
+    { "entity": "project", "value": "SpringSale", "role": "lead", ... },
+    { "entity": "department", "value": "маркетинге", ... }
+  ], ...
+}
+
+Пример 8: Поиск по навыку
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Найди программистов на Python" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Найди программистов на Python",
+  "intent": { "name": "search_person", "confidence": 0.98... },
+  "entities": [
+    { "entity": "skill", "value": "Python", ... }
+  ], ...
+}
+
+Пример 9: Поиск людей, у которых скоро ДР
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "У кого из отдела продаж день рождения скоро?" }'
+Ожидаемый ответ (структура):
+{
+  "text": "У кого из отдела продаж день рождения скоро?",
+  "intent": { "name": "search_person", "confidence": 0.97... },
+  "entities": [
+    { "entity": "department", "value": "отдела продаж", ... },
+    { "entity": "birthday_specifier", "value": "скоро", ... }
+  ], ...
+}
+
+Запуск сервиса
+Для работы API необходимо, чтобы сервер Rasa был запущен с включенным HTTP API. Команда для запуска (выполняется в корневой директории проекта Rasa):
+rasa run --enable-api --cors "*" -p 5005
+    --enable-api: Включает HTTP API.
+    --cors "*": Разрешает Cross-Origin Resource Sharing для всех источников (для разработки). В продакшене рекомендуется настроить более строгие правила CORS.
+    -p 5005: Указывает порт (можно изменить при необходимости).
