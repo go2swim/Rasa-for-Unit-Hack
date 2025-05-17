@@ -106,7 +106,6 @@ nlu:
     examples: |
       - Вася
 
-  # ... (остальные интенты: search_event, find_birthday, etc. как в предыдущем ответе) ...
   - intent: search_event
     examples: |
       - Какие мероприятия [завтра](date)?
@@ -133,7 +132,7 @@ nlu:
       - Мои задачи на [сегодня](date)
       - Какие задачи у [Сергея](name) по проекту [Феникс](project)?
 
-  - intent: check_calendar_занятости
+  - intent: check_employment_calendar
     examples: |
       - Проверь занятость [Александра](name) на [завтра](date)
       - Свободен ли [Михаил](name) [10 июня в 3 часа дня](date)?
