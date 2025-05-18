@@ -20,6 +20,10 @@ intents:
       use_entities:
         - event_name
         - date
+        - location # Новая сущность для событий
+        - event_category # Новая сущность для событий
+        - department # Может использоваться для фильтрации событий по отделу
+        - organizer # Новая сущность для событий
   - find_birthday: # Этот интент остается для общего поиска ДР
       use_entities:
         - name
@@ -33,6 +37,7 @@ intents:
       use_entities:
         - name
         - date
+        - room_name # Добавлено для согласованности с NLU
 
 entities:
   - name
@@ -46,6 +51,10 @@ entities:
   - age_younger_than
   - birthday_specifier
   - skill
+  - location # Новая сущность
+  - event_category # Новая сущность
+  - organizer # Новая сущность
+  - room_name # Новая сущность
 
 slots:
   name:
@@ -114,6 +123,30 @@ slots:
     mappings:
       - type: from_entity
         entity: skill
+  location: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: location
+  event_category: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_category
+  organizer: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: organizer
+  room_name: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: room_name
 
 responses:
   utter_greet:
@@ -126,7 +159,8 @@ responses:
     - text: "Можете уточнить имя, фамилию, отдел, проект, навыки, возраст или информацию о дне рождения сотрудника?"
     - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали, включая навыки, возраст или день рождения."
   utter_ask_details_event:
-    - text: "Какое мероприятие или дата вас интересует?"
+    - text: "Какое мероприятие, категорию, дату или место проведения вы ищете?"
+    - text: "Уточните название мероприятия, его тип, дату, место или кто организатор?"
   utter_ask_details_task:
     - text: "Уточните название задачи, проекта или дату."
   utter_processing_request: # Общий ответ, который может быть использован перед вызовом action

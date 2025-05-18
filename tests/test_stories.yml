@@ -8,24 +8,54 @@ stories:
   - user: |
       Найди Виктора из отдела разработки
     intent: search_person
-  - action: action_process_request # Убедитесь, что это ваше актуальное действие
-  # Можно добавить ассерты на извлеченные слоты, если они заполняются
-  # - slot_was_set:
-  #   - name: "Виктор"
-  #   - department: "разработки"
+    entities:
+    - name: "Виктора"
+    - department: "отдела разработки"
+  - action: action_process_request
 
 - story: search person directly
   steps:
   - user: |
       Контакты Ивана Сидорова
     intent: search_person
+    entities:
+    - name: "Ивана Сидорова"
   - action: action_process_request
 
-- story: search event
+- story: search event basic
   steps:
   - user: |
       Какие мероприятия завтра?
     intent: search_event
+    entities:
+    - date: "завтра"
   - action: action_process_request
 
-# ... и так далее для других интентов
+- story: search event with category and location
+  steps:
+  - user: "Какие тренинги онлайн на следующей неделе?"
+    intent: search_event
+    entities:
+    - event_category: "тренинги"
+    - location: "онлайн"
+    - date: "на следующей неделе"
+  - action: action_process_request
+
+- story: create event (via search_event intent)
+  steps:
+  - user: "Создай митинг по проекту Гамма на завтра в 10"
+    intent: search_event
+    entities:
+    - event_name: "митинг по проекту Гамма"
+    - date: "завтра в 10"
+  - action: action_process_request
+
+- story: search event for department
+  steps:
+  - user: "Есть тимбилдинг для HR в этом месяце?"
+    intent: search_event
+    entities:
+    - event_category: "тимбилдинг"
+    - department: "HR"
+    - date: "в этом месяце"
+  - action: action_process_request

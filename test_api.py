@@ -23,7 +23,15 @@ if __name__ == "__main__":
         "Привет",
         "Покажи мне Волкова Михаила",
         "телефон Кузнецова",
-        "Сотрудник Лебедева Наталья из бухгалтерии в проекте Гамма"
+        "Сотрудник Лебедева Наталья из бухгалтерии в проекте Гамма",
+        "Какие корпоративные тренинги для отдела IT будут на следующей неделе в Москве?",
+        "Создай внутренний ивент Урок йоги на 10 июня в 18:00 в спортзале",
+        "Добавь меня в список участников встречи Общая планёрка 25 мая",
+        "Когда будет следующий хакатон и кто его организует?",
+        "Покажи все онлайн‑эвенты на следующей неделе",
+        "Найди внутрикорпоративное мероприятие, связанное с благотворительностью",
+        "Напомни всем участникам о встрече SprintReview за час до начала",
+        "Есть ли в этом месяце тимбилдинг для отдела IT?"
     ]
 
     for query in queries:
@@ -39,9 +47,12 @@ if __name__ == "__main__":
             if entities:
                 print("  Сущности:")
                 for entity in entities:
-                    print(f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}', "
-                          f"Confidence: {entity.get('confidence_entity', 'N/A'):.4f}")
+                    confidence_val = entity.get('confidence_entity', entity.get('confidence')) # DIET sometimes uses 'confidence'
+                    confidence_str = f", Confidence: {confidence_val:.4f}" if isinstance(confidence_val, float) else ""
+                    role_str = f", Role: {entity.get('role')}" if entity.get('role') else ""
+                    print(f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}'{confidence_str}{role_str}")
             else:
                 print("  Сущности: не найдены")
-            # print(json.dumps(nlu_result, indent=2, ensure_ascii=False)) # Раскомментируйте для полного вывода JSON
+            # Для полного вывода можно раскомментировать следующую строку:
+            # print(json.dumps(nlu_result, indent=2, ensure_ascii=False))
         print("-" * 30)

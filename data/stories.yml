@@ -6,10 +6,10 @@ stories:
   - intent: greet
   - action: utter_greet
   - intent: search_person
-    entities: # Примеры сущностей для тестирования
+    entities:
     - name: "Анна"
     - department: "маркетинг"
-  - action: action_process_request # Заменяем на наше новое действие
+  - action: action_process_request
 
 - story: поиск человека без приветствия
   steps:
@@ -18,14 +18,40 @@ stories:
       - name: "Петр"
     - action: action_process_request
 
-- story: поиск мероприятия
+- story: поиск мероприятия базовый
   steps:
     - intent: greet
     - action: utter_greet
     - intent: search_event
       entities:
-      - event_name: "корпоратив"
+      - event_category: "корпоратив"
       - date: "завтра"
     - action: action_process_request
 
-# Можно добавить больше историй для других интентов и сценариев
+- story: поиск мероприятия с локацией и категорией
+  steps:
+  - intent: search_event
+    entities:
+    - event_category: "тренинг"
+    - location: "онлайн"
+    - date: "на следующей неделе"
+  - action: action_process_request
+
+- story: создание мероприятия (через search_event)
+  steps:
+  - user: "Создай событие командный сбор в пятницу в переговорке Дзен"
+    intent: search_event
+    entities:
+    - event_name: "командный сбор"
+    - date: "в пятницу"
+    - location: "переговорке Дзен"
+  - action: action_process_request
+
+- story: поиск мероприятия для отдела
+  steps:
+  - intent: search_event
+    entities:
+    - event_category: "тимбилдинг"
+    - department: "IT отдел"
+    - date: "в этом месяце"
+  - action: action_process_request

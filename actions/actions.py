@@ -19,16 +19,14 @@ class ActionProcessRequest(Action):
 
         intent_name = tracker.latest_message['intent'].get('name')
         entities_from_tracker = tracker.latest_message.get('entities', [])
+        latest_message_text = tracker.latest_message.get('text')
 
-        # Формируем структурированные данные для отправки на бэкенд
-        # Этот JSON будет содержать все детали для вашего бэкенда
         extracted_data_for_backend = {
             "intent": intent_name,
-            "entities": [],  # Будет заполнен сущностями с их ролями
-            "text": tracker.latest_message.get('text')
+            "entities": [],
+            "text": latest_message_text
         }
 
-        # Логирование и подготовка информации для ответа (если он нужен от action)
         log_message_parts = [f"Получен запрос с интентом: {intent_name}"]
 
         if not entities_from_tracker:
@@ -46,34 +44,30 @@ class ActionProcessRequest(Action):
                     entity_info_for_backend['confidence'] = round(entity['confidence_entity'], 4)
                 if 'role' in entity:
                     entity_info_for_backend['role'] = entity['role']
-                if 'group' in entity:
+                if 'group' in entity:  # For regex entities
                     entity_info_for_backend['group'] = entity['group']
 
                 extracted_data_for_backend["entities"].append(entity_info_for_backend)
 
-                # Формируем строку для лога
                 role_str = f" (Роль: {entity['role']})" if 'role' in entity else ""
+                group_str = f" (Группа: {entity['group']})" if 'group' in entity else ""  # For regex
+                confidence_val = entity.get('confidence_entity', 'N/A')
+                confidence_str = f" (Confidence: {confidence_val:.2f})" if isinstance(confidence_val, float) else ""
+
                 log_message_parts.append(
-                    f"- Тип: {entity['entity']}{role_str}, Значение: '{entity['value']}'"
-                    f" (Confidence: {entity.get('confidence_entity', 'N/A'):.2f})"
+                    f"- Тип: {entity['entity']}{role_str}{group_str}, Значение: '{entity['value']}'{confidence_str}"
                 )
 
         final_log_message = "\n".join(log_message_parts)
-        logger.info(f"Processing request: {tracker.latest_message.get('text')}\n{final_log_message}")
-        # Логируем JSON, который будет отправлен на бэкенд (или который бэкенд получит от /model/parse)
+        logger.info(f"Processing request: {latest_message_text}\n{final_log_message}")
         logger.info(
             f"Data structure for backend (from /model/parse or similar action output):\n{json.dumps(extracted_data_for_backend, ensure_ascii=False, indent=2)}")
 
         # --- Формирование ответа пользователю (для демонстрации в чате) ---
-        # Этот блок нужен, если вы хотите, чтобы Rasa action отвечал в чат.
-        # Если вы используете только /model/parse, этот блок не будет выполняться для внешних API запросов.
-
         response_message = f"✅ Ваш запрос (интент: {intent_name}) принят. "
         details_parts = []
 
         if intent_name == "search_person":
-            # Собираем параметры из extracted_data_for_backend для формирования красивого ответа
-            # Бэкенд будет использовать сам extracted_data_for_backend
             temp_search_params = {}
             projects_lead = []
             projects_participant = []
@@ -87,15 +81,15 @@ class ActionProcessRequest(Action):
                 if entity_type == "project":
                     if entity_role == "lead":
                         projects_lead.append(entity_value)
-                    else:  # Если роли нет или она другая, считаем участником
+                    else:
                         projects_participant.append(entity_value)
                 elif entity_type == "skill":
                     skills.append(entity_value)
-                elif entity_type not in temp_search_params:
+                elif entity_type not in temp_search_params:  # name, department, age_exact etc.
                     temp_search_params[entity_type] = entity_value
                 elif isinstance(temp_search_params[entity_type], list):
                     temp_search_params[entity_type].append(entity_value)
-                else:
+                else:  # convert to list if multiple values for same entity type (e.g. multiple names)
                     temp_search_params[entity_type] = [temp_search_params[entity_type], entity_value]
 
             if temp_search_params.get("name"): details_parts.append(f"Имя/ФИО: '{temp_search_params.get('name')}'")
@@ -119,12 +113,43 @@ class ActionProcessRequest(Action):
                 response_message = "✅ Запрос на поиск сотрудника принят (без уточняющих критериев)."
 
         elif intent_name == "search_event":
-            event_name = next(
-                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'event_name'),
-                "не указано")
-            event_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                              "не указана")
-            response_message = f"✅ Запрос на поиск мероприятия '{event_name}' (дата: '{event_date}') принят."
+            event_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in event_params:
+                    event_params[ent["entity"]] = ent["value"]
+                elif isinstance(event_params[ent["entity"]], list):
+                    event_params[ent["entity"]].append(ent["value"])
+                else:
+                    event_params[ent["entity"]] = [event_params[ent["entity"]], ent["value"]]
+
+            if event_params.get("event_name"): details_parts.append(f"Название: '{event_params.get('event_name')}'")
+            if event_params.get("event_category"): details_parts.append(
+                f"Категория: '{event_params.get('event_category')}'")
+            if event_params.get("date"): details_parts.append(f"Дата/период: '{event_params.get('date')}'")
+            if event_params.get("location"): details_parts.append(f"Место: '{event_params.get('location')}'")
+            if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
+            if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
+
+            # Check for action keywords in original text
+            action_taken_msg = ""
+            if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
+                action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
+            elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
+                action_taken_msg = "Запрос на добавление участника принят. "
+            elif "напомни" in latest_message_text.lower():
+                action_taken_msg = "Запрос на напоминание о мероприятии принят. "
+            elif "удали" in latest_message_text.lower():
+                action_taken_msg = "Запрос на удаление мероприятия принят. "
+            elif "перенеси" in latest_message_text.lower():
+                action_taken_msg = "Запрос на перенос мероприятия принят. "
+            else:
+                action_taken_msg = "Запрос по мероприятию принят. "
+
+            if details_parts:
+                response_message = f"✅ {action_taken_msg}Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
+
 
         elif intent_name == "find_birthday":
             person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
@@ -147,7 +172,10 @@ class ActionProcessRequest(Action):
                                "не указан")
             calendar_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
                                  "не указана")
-            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}') принят."
+            room_name_val = next(
+                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'room_name'), None)
+            room_str = f", ресурс: '{room_name_val}'" if room_name_val else ""
+            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}'{room_str}) принят."
 
         elif intent_name == "greet":
             response_message = "Привет! Чем могу помочь?"
@@ -159,12 +187,6 @@ class ActionProcessRequest(Action):
             response_message = "Хорошо."
         elif intent_name == "bot_challenge":
             response_message = "Я AI-ассистент, созданный для помощи в корпоративных задачах."
-        # Добавьте другие специфичные ответы, если необходимо
 
         dispatcher.utter_message(text=response_message)
-
-        # Если вы хотите, чтобы это действие возвращало структурированные данные через API Rasa (а не только через /model/parse),
-        # то можно использовать dispatcher.utter_custom_json(extracted_data_for_backend)
-        # Но для вашего случая (использование /model/parse) это не требуется.
-
-        return []  # Никаких событий для изменения диалога не возвращаем, если это чисто NLU + Rules
+        return []
