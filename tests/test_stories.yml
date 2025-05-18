@@ -121,3 +121,42 @@ stories:
     - name: "Петровой"
     - task_priority: "высоким"
   - action: action_process_request
+
+- story: check my calendar for today
+  steps:
+  - user: "Покажи мой календарь на сегодня"
+    intent: check_employment_calendar
+    entities:
+    - name: "мой"
+    - date: "сегодня"
+  - action: action_process_request
+
+- story: find free slots in my calendar this week
+  steps:
+  - user: "Найди свободные слоты в моём календаре на этой неделе"
+    intent: check_employment_calendar
+    entities:
+    - name: "моём" # или мой
+    - date: "на этой неделе"
+  - action: action_process_request
+
+- story: check meetings with Petrov in my calendar
+  steps:
+  - user: "Какие совещания с Петровым в моём календаре завтра?"
+    intent: check_employment_calendar
+    entities:
+    - name: "Петровым" # или Петров
+    - name: "моём" # или мой
+    - event_name: "совещания"
+    - date: "завтра"
+  - action: action_process_request
+
+- story: find free time for two-hour meeting
+  steps:
+  - user: "Найди свободное время для двухчасовой встречи в моем календаре"
+    intent: check_employment_calendar
+    entities:
+    - date: "двухчасовой" # Duckling может извлечь это как duration
+    - name: "моем"
+    - event_name: "встречи"
+  - action: action_process_request

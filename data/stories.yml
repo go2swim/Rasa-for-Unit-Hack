@@ -111,3 +111,29 @@ stories:
           - task_priority: "высоким"
           - task_tag: "отчет"
       - action: action_process_request
+
+
+  - story: проверить мой календарь на сегодня
+    steps:
+      - intent: check_employment_calendar
+        entities:
+          - name: "мой"
+          - date: "сегодня"
+      - action: action_process_request
+
+  - story: найти свободные слоты у Петрова на неделе
+    steps:
+      - intent: check_employment_calendar
+        entities:
+          - name: "Петрова" # или Петров
+          - date: "на этой неделе"
+      - action: action_process_request # Бэкенд будет искать "свободные слоты" по ключевым словам в тексте
+
+  - story: проверить совещания с участием Иванова в моем календаре
+    steps:
+      - intent: check_employment_calendar
+        entities:
+          - name: "моём" # или мой
+          - name: "Иванова" # или Иванов
+          - event_name: "совещания"
+      - action: action_process_request

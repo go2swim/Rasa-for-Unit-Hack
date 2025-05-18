@@ -4,7 +4,7 @@ import json
 
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet  # Можем использовать для установки слотов, если понадобится
+from rasa_sdk.events import SlotSet
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +40,16 @@ class ActionProcessRequest(Action):
                     "start": entity.get('start'),
                     "end": entity.get('end')
                 }
-                # Ensure 'confidence' field exists, preferring 'confidence_entity'
                 confidence_val_raw = entity.get('confidence_entity', entity.get('confidence'))
                 if confidence_val_raw is not None:
-                    entity_info_for_backend['confidence'] = round(float(confidence_val_raw), 4)
+                    try:  # Добавим try-except на случай если confidence не float
+                        entity_info_for_backend['confidence'] = round(float(confidence_val_raw), 4)
+                    except ValueError:
+                        logger.warning(f"Could not convert confidence to float for entity: {entity}")
 
                 if 'role' in entity:
                     entity_info_for_backend['role'] = entity['role']
-                if 'group' in entity:  # For regex entities
+                if 'group' in entity:
                     entity_info_for_backend['group'] = entity['group']
 
                 extracted_data_for_backend["entities"].append(entity_info_for_backend)
@@ -56,7 +58,7 @@ class ActionProcessRequest(Action):
                 group_str = f" (Группа: {entity['group']})" if 'group' in entity else ""
 
                 confidence_log_str = ""
-                if 'confidence' in entity_info_for_backend:  # Use the rounded one for log
+                if 'confidence' in entity_info_for_backend:
                     confidence_log_str = f" (Confidence: {entity_info_for_backend['confidence']:.2f})"
 
                 log_message_parts.append(
@@ -68,7 +70,6 @@ class ActionProcessRequest(Action):
         logger.info(
             f"Data structure for backend (from /model/parse or similar action output):\n{json.dumps(extracted_data_for_backend, ensure_ascii=False, indent=2)}")
 
-        # --- Формирование ответа пользователю (для демонстрации в чате) ---
         response_message = f"✅ Ваш запрос (интент: {intent_name}) принят. "
         details_parts = []
 
@@ -190,13 +191,13 @@ class ActionProcessRequest(Action):
                 response_message = "✅ Запрос на поиск дней рождения принят (без уточняющих критериев)."
 
         elif intent_name == "check_task":
+            # ... (логика без изменений) ...
             task_params = {}
             for ent in extracted_data_for_backend["entities"]:
-                # Handle cases where "мои" or "меня" is extracted as name
                 if ent["entity"] == "name" and ent["value"].lower() in ["мои", "моя", "мое", "моё", "мне", "меня",
                                                                         "мной", "я"]:
                     details_parts.append("Задачи для: 'текущего пользователя (мои)'")
-                    task_params["assignee"] = "current_user"  # Special marker for backend
+                    task_params["assignee"] = "current_user"
                 elif ent["entity"] not in task_params:
                     task_params[ent["entity"]] = ent["value"]
                 elif isinstance(task_params[ent["entity"]], list):
@@ -214,7 +215,6 @@ class ActionProcessRequest(Action):
                 f"Приоритет: '{task_params.get('task_priority')}'")
             if task_params.get("task_tag"): details_parts.append(f"Тег: '{task_params.get('task_tag')}'")
 
-            # Check for implicit "my tasks" if no name entity was extracted but text implies it
             if "assignee" not in task_params and "name" not in task_params and \
                     any(keyword in latest_message_text.lower() for keyword in
                         ["мои ", "моя ", "моё ", "мне ", "меня ", "мной ", " я "]):
@@ -228,17 +228,68 @@ class ActionProcessRequest(Action):
             else:
                 response_message = "✅ Запрос на проверку задач принят (без уточняющих критериев)."
 
-
         elif intent_name == "check_employment_calendar":
-            # ... (логика без изменений) ...
-            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
-                               "не указан")
-            calendar_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                                 "не указана")
-            room_name_val = next(
-                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'room_name'), None)
-            room_str = f", ресурс: '{room_name_val}'" if room_name_val else ""
-            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}'{room_str}) принят."
+            calendar_params = {}
+            # Check for "my" calendar implicitly or explicitly
+            user_specified = False
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] == "name":
+                    if ent["value"].lower() in ["мой", "моя", "моё", "моём", "мои", "меня", "мне", "мной", "я"]:
+                        details_parts.append("Календарь для: 'текущего пользователя (мой)'")
+                        calendar_params["user"] = "current_user"
+                        user_specified = True
+                    else:
+                        details_parts.append(f"Календарь для: '{ent['value']}'")
+                        calendar_params["user"] = ent["value"]
+                        user_specified = True
+                elif ent["entity"] not in calendar_params:
+                    calendar_params[ent["entity"]] = ent["value"]
+                elif isinstance(calendar_params[ent["entity"]], list):
+                    calendar_params[ent["entity"]].append(ent["value"])
+                else:  # convert to list if multiple entities of same type (e.g. multiple dates for a range)
+                    calendar_params[ent["entity"]] = [calendar_params[ent["entity"]], ent["value"]]
+
+            if not user_specified and any(keyword in latest_message_text.lower() for keyword in
+                                          ["мой ", "моя ", "моё ", "моём ", "мои ", "меня ", "мне ", "мной ", " я "]):
+                details_parts.append("Календарь для: 'текущего пользователя (мой)'")
+                calendar_params["user"] = "current_user"
+            elif not user_specified and "календарь" in latest_message_text.lower() and not any(
+                    e['entity'] == 'name' for e in extracted_data_for_backend["entities"]):
+                details_parts.append(
+                    "Календарь для: 'текущего пользователя (по умолчанию)'")  # Default to current user if no name
+                calendar_params["user"] = "current_user"
+
+            if calendar_params.get("date"):
+                # Handle multiple date entities (e.g., range, duration)
+                if isinstance(calendar_params.get("date"), list):
+                    dates_str = "', '".join(calendar_params.get("date"))
+                    details_parts.append(f"Период/Время: '{dates_str}'")
+                else:
+                    details_parts.append(f"Период/Время: '{calendar_params.get('date')}'")
+
+            if calendar_params.get("room_name"): details_parts.append(f"Ресурс: '{calendar_params.get('room_name')}'")
+            if calendar_params.get("event_name"): details_parts.append(
+                f"Тип события: '{calendar_params.get('event_name')}'")
+
+            # Contextual understanding for slot types, conflicts, etc.
+            if "свободные слоты" in latest_message_text.lower() or \
+                    "свободное время" in latest_message_text.lower() or \
+                    "временные окна без встреч" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск свободных слотов'")
+            elif "занятые часы" in latest_message_text.lower() or \
+                    "загруженных дней" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск занятых слотов'")
+            elif "конфликты" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск конфликтов'")
+
+            if "обеденный перерыв" in latest_message_text.lower() and not calendar_params.get("event_name"):
+                details_parts.append("Тип события: 'обеденный перерыв'")
+
+            if details_parts:
+                response_message = f"✅ Запрос по календарю занятости принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос по календарю занятости принят (без уточняющих критериев)."
+
 
         elif intent_name == "greet":
             response_message = "Привет! Чем могу помочь?"

@@ -35,24 +35,27 @@ intents:
         - date
   - check_task:
       use_entities:
-        - task_name # Название конкретной задачи
-        - name # Исполнитель или тот, чьи задачи ищут (например, "мои" или "Петрова")
-        - project # Проект, к которому относится задача
-        - date # Дедлайн, дата создания, период
-        - task_status # Новая сущность: "невыполненные", "в процессе", "завершенные"
-        - task_priority # Новая сущность: "высокий", "низкий"
-        - task_tag # Новая сущность: "отчет", "дизайн"
-  - check_employment_calendar:
-      use_entities:
+        - task_name
         - name
+        - project
         - date
-        - room_name
+        - task_status
+        - task_priority
+        - task_tag
+  - check_employment_calendar: # Проверка календаря занятости
+      use_entities:
+        - name # Чей календарь ("мой", "Петрова")
+        - date # Период, дата, время ("сегодня", "завтра", "на этой неделе", "20 мая", "до 12:00")
+        - room_name # Зарезервированные переговорки
+        - event_name # Тип события для фильтрации ("встречи", "совещания")
+        # duration - можно пробовать извлекать как часть date или бэкенд будет парсить из текста
+        # slot_type - (свободные/занятые) - определяется контекстом запроса и ключевыми словами
 
 entities:
   - name
   - department
   - project
-  - event_name
+  - event_name # Может использоваться и в check_employment_calendar для типа события
   - date
   - task_name
   - age_exact
@@ -61,12 +64,13 @@ entities:
   - birthday_specifier
   - skill
   - location
-  - event_category
+  - event_category # Может использоваться и в check_employment_calendar для типа события
   - organizer
   - room_name
-  - task_status # Новая сущность
-  - task_priority # Новая сущность
-  - task_tag # Новая сущность
+  - task_status
+  - task_priority
+  - task_tag
+  # Новые сущности пока не добавляем, пробуем обойтись существующими и контекстом
 
 slots:
   name:
@@ -87,7 +91,7 @@ slots:
     mappings:
       - type: from_entity
         entity: project
-  event_name:
+  event_name: # Существующий слот, будет использоваться шире
     type: text
     influence_conversation: false
     mappings:
@@ -99,7 +103,7 @@ slots:
     mappings:
       - type: from_entity
         entity: date
-  task_name: # Существующий слот
+  task_name:
     type: text
     influence_conversation: false
     mappings:
@@ -141,7 +145,7 @@ slots:
     mappings:
       - type: from_entity
         entity: location
-  event_category:
+  event_category: # Существующий слот, может использоваться шире
     type: text
     influence_conversation: false
     mappings:
@@ -159,19 +163,19 @@ slots:
     mappings:
       - type: from_entity
         entity: room_name
-  task_status: # Новый слот
+  task_status:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: task_status
-  task_priority: # Новый слот
+  task_priority:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: task_priority
-  task_tag: # Новый слот
+  task_tag:
     type: text
     influence_conversation: false
     mappings:
@@ -196,7 +200,9 @@ responses:
   utter_ask_details_task:
     - text: "Уточните название задачи, проекта, исполнителя, статус, приоритет, тег или дату."
     - text: "Какие задачи вы ищете? Можно указать проект, исполнителя, дедлайн, статус, приоритет или метку."
-  utter_processing_request: # Общий ответ, который может быть использован перед вызовом action
+  utter_ask_details_calendar:
+    - text: "Чей календарь и на какой период вас интересует? Можно уточнить тип события или длительность."
+  utter_processing_request:
     - text: "Понял, обрабатываю ваш запрос..."
 
 actions:
