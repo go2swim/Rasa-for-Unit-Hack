@@ -185,7 +185,7 @@ responses:
   utter_goodbye:
     - text: "До свидания!"
   utter_iamabot:
-    - text: "Я AI-ассистент."
+    - text: "Я Интересыч, AI-помощник для сотрудников компании Очень Интересно."
   utter_ask_details_person:
     - text: "Можете уточнить имя, фамилию, отдел, проект, навыки, возраст или информацию о дне рождения сотрудника?"
   utter_ask_details_event:

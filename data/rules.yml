@@ -36,7 +36,7 @@ rules:
   - intent: check_task
   - action: action_process_request
 
-- rule: Process calendar check request # <<< ИЗМЕНЕНО НАЗВАНИЕ ИНТЕНТА
+- rule: Process calendar check request
   steps:
-  - intent: check_employment_calendar # <<< ИЗМЕНЕНО НАЗВАНИЕ ИНТЕНТА
+  - intent: check_employment_calendar
   - action: action_process_request
