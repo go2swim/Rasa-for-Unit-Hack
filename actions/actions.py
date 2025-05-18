@@ -42,7 +42,7 @@ class ActionProcessRequest(Action):
                 }
                 confidence_val_raw = entity.get('confidence_entity', entity.get('confidence'))
                 if confidence_val_raw is not None:
-                    try:  # Добавим try-except на случай если confidence не float
+                    try:
                         entity_info_for_backend['confidence'] = round(float(confidence_val_raw), 4)
                     except ValueError:
                         logger.warning(f"Could not convert confidence to float for entity: {entity}")
@@ -74,11 +74,11 @@ class ActionProcessRequest(Action):
         details_parts = []
 
         if intent_name == "search_person":
-            # ... (логика без изменений) ...
             temp_search_params = {}
             projects_lead = []
             projects_participant = []
             skills = []
+            birthday_specifiers = []  # Can be multiple
 
             for ent in extracted_data_for_backend["entities"]:
                 entity_type = ent["entity"]
@@ -92,6 +92,8 @@ class ActionProcessRequest(Action):
                         projects_participant.append(entity_value)
                 elif entity_type == "skill":
                     skills.append(entity_value)
+                elif entity_type == "birthday_specifier":
+                    birthday_specifiers.append(entity_value)
                 elif entity_type not in temp_search_params:
                     temp_search_params[entity_type] = entity_value
                 elif isinstance(temp_search_params[entity_type], list):
@@ -111,8 +113,7 @@ class ActionProcessRequest(Action):
                 f"Старше: '{temp_search_params.get('age_older_than')}' лет")
             if temp_search_params.get("age_younger_than"): details_parts.append(
                 f"Младше: '{temp_search_params.get('age_younger_than')}' лет")
-            if temp_search_params.get("birthday_specifier"): details_parts.append(
-                f"День рождения: '{temp_search_params.get('birthday_specifier')}'")
+            if birthday_specifiers: details_parts.append(f"День рождения: '{', '.join(birthday_specifiers)}'")
 
             if details_parts:
                 response_message = f"✅ Запрос на поиск сотрудника принят. Критерии: {'; '.join(details_parts)}."
@@ -120,10 +121,12 @@ class ActionProcessRequest(Action):
                 response_message = "✅ Запрос на поиск сотрудника принят (без уточняющих критериев)."
 
         elif intent_name == "search_event":
-            # ... (логика без изменений) ...
             event_params = {}
+            dates = []
             for ent in extracted_data_for_backend["entities"]:
-                if ent["entity"] not in event_params:
+                if ent["entity"] == "date":
+                    dates.append(ent["value"])
+                elif ent["entity"] not in event_params:
                     event_params[ent["entity"]] = ent["value"]
                 elif isinstance(event_params[ent["entity"]], list):
                     event_params[ent["entity"]].append(ent["value"])
@@ -133,12 +136,13 @@ class ActionProcessRequest(Action):
             if event_params.get("event_name"): details_parts.append(f"Название: '{event_params.get('event_name')}'")
             if event_params.get("event_category"): details_parts.append(
                 f"Категория: '{event_params.get('event_category')}'")
-            if event_params.get("date"): details_parts.append(f"Дата/период: '{event_params.get('date')}'")
+            if dates: details_parts.append(f"Дата/период: '{', '.join(dates)}'")
             if event_params.get("location"): details_parts.append(f"Место: '{event_params.get('location')}'")
             if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
             if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
 
-            action_taken_msg = ""
+            action_taken_msg = "Запрос по мероприятию принят. "
+            # ... (action keyword checks remain the same)
             if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
                 action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
             elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
@@ -149,8 +153,6 @@ class ActionProcessRequest(Action):
                 action_taken_msg = "Запрос на удаление мероприятия принят. "
             elif "перенеси" in latest_message_text.lower():
                 action_taken_msg = "Запрос на перенос мероприятия принят. "
-            else:
-                action_taken_msg = "Запрос по мероприятию принят. "
 
             if details_parts:
                 response_message = f"✅ {action_taken_msg}Критерии: {'; '.join(details_parts)}."
@@ -158,10 +160,15 @@ class ActionProcessRequest(Action):
                 response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
 
         elif intent_name == "find_birthday":
-            # ... (логика без изменений) ...
             birthday_params = {}
+            birthday_specifiers = []
+            dates = []
             for ent in extracted_data_for_backend["entities"]:
-                if ent["entity"] not in birthday_params:
+                if ent["entity"] == "birthday_specifier":
+                    birthday_specifiers.append(ent["value"])
+                elif ent["entity"] == "date":
+                    dates.append(ent["value"])
+                elif ent["entity"] not in birthday_params:
                     birthday_params[ent["entity"]] = ent["value"]
                 elif isinstance(birthday_params[ent["entity"]], list):
                     birthday_params[ent["entity"]].append(ent["value"])
@@ -169,10 +176,8 @@ class ActionProcessRequest(Action):
                     birthday_params[ent["entity"]] = [birthday_params[ent["entity"]], ent["value"]]
 
             if birthday_params.get("name"): details_parts.append(f"Имя/ФИО: '{birthday_params.get('name')}'")
-            if birthday_params.get("birthday_specifier"):
-                details_parts.append(f"Период: '{birthday_params.get('birthday_specifier')}'")
-            elif birthday_params.get("date"):
-                details_parts.append(f"Период: '{birthday_params.get('date')}'")
+            if birthday_specifiers: details_parts.append(f"Период (спецификатор): '{', '.join(birthday_specifiers)}'")
+            if dates: details_parts.append(f"Период (дата): '{', '.join(dates)}'")
             if birthday_params.get("department"): details_parts.append(f"Отдел: '{birthday_params.get('department')}'")
             if birthday_params.get("project"): details_parts.append(f"Проект: '{birthday_params.get('project')}'")
             if birthday_params.get("age_older_than"): details_parts.append(
@@ -180,10 +185,8 @@ class ActionProcessRequest(Action):
             if birthday_params.get("age_younger_than"): details_parts.append(
                 f"Младше: '{birthday_params.get('age_younger_than')}' лет")
 
-            if "менеджер" in latest_message_text.lower():
-                details_parts.append(f"Должность (текст): 'менеджер'")
-            if "удалён" in latest_message_text.lower():
-                details_parts.append(f"Статус (текст): 'удалённый'")
+            if "менеджер" in latest_message_text.lower(): details_parts.append(f"Должность (текст): 'менеджер'")
+            if "удалён" in latest_message_text.lower(): details_parts.append(f"Статус (текст): 'удалённый'")
 
             if details_parts:
                 response_message = f"✅ Запрос на поиск дней рождения принят. Критерии: {'; '.join(details_parts)}."
@@ -191,13 +194,17 @@ class ActionProcessRequest(Action):
                 response_message = "✅ Запрос на поиск дней рождения принят (без уточняющих критериев)."
 
         elif intent_name == "check_task":
-            # ... (логика без изменений) ...
-            task_params = {}
+            task_params = {"assignee": None}  # Default assignee to None
+            dates = []
+            task_tags = []
             for ent in extracted_data_for_backend["entities"]:
                 if ent["entity"] == "name" and ent["value"].lower() in ["мои", "моя", "мое", "моё", "мне", "меня",
                                                                         "мной", "я"]:
-                    details_parts.append("Задачи для: 'текущего пользователя (мои)'")
                     task_params["assignee"] = "current_user"
+                elif ent["entity"] == "date":
+                    dates.append(ent["value"])
+                elif ent["entity"] == "task_tag":
+                    task_tags.append(ent["value"])
                 elif ent["entity"] not in task_params:
                     task_params[ent["entity"]] = ent["value"]
                 elif isinstance(task_params[ent["entity"]], list):
@@ -205,23 +212,28 @@ class ActionProcessRequest(Action):
                 else:
                     task_params[ent["entity"]] = [task_params[ent["entity"]], ent["value"]]
 
-            if task_params.get("task_name"): details_parts.append(f"Название задачи: '{task_params.get('task_name')}'")
-            if task_params.get("name") and task_params.get("assignee") != "current_user": details_parts.append(
-                f"Исполнитель: '{task_params.get('name')}'")
-            if task_params.get("project"): details_parts.append(f"Проект: '{task_params.get('project')}'")
-            if task_params.get("date"): details_parts.append(f"Дата/Дедлайн: '{task_params.get('date')}'")
-            if task_params.get("task_status"): details_parts.append(f"Статус: '{task_params.get('task_status')}'")
-            if task_params.get("task_priority"): details_parts.append(
-                f"Приоритет: '{task_params.get('task_priority')}'")
-            if task_params.get("task_tag"): details_parts.append(f"Тег: '{task_params.get('task_tag')}'")
-
-            if "assignee" not in task_params and "name" not in task_params and \
+            if task_params["assignee"] == "current_user":
+                details_parts.append("Задачи для: 'текущего пользователя (мои)'")
+            elif task_params.get("name"):
+                details_parts.append(f"Исполнитель: '{task_params.get('name')}'")
+            elif "assignee" not in task_params and not task_params.get("name") and \
                     any(keyword in latest_message_text.lower() for keyword in
                         ["мои ", "моя ", "моё ", "мне ", "меня ", "мной ", " я "]):
                 details_parts.append("Задачи для: 'текущего пользователя (мои)'")
 
+            if task_params.get("task_name"): details_parts.append(f"Название задачи: '{task_params.get('task_name')}'")
+            if task_params.get("project"): details_parts.append(f"Проект: '{task_params.get('project')}'")
+            if dates: details_parts.append(f"Дата/Дедлайн: '{', '.join(dates)}'")
+            if task_params.get("task_status"): details_parts.append(f"Статус: '{task_params.get('task_status')}'")
+            if task_params.get("task_priority"): details_parts.append(
+                f"Приоритет: '{task_params.get('task_priority')}'")
+            if task_tags: details_parts.append(f"Теги: '{', '.join(task_tags)}'")
+
             if "напоминания" in latest_message_text.lower() or "напомни" in latest_message_text.lower():
                 details_parts.append("Тип: 'напоминание'")
+            if "участник" in latest_message_text.lower(): details_parts.append("Роль: 'участник (из текста)'")
+            if "согласования" in latest_message_text.lower() and "менеджера" in latest_message_text.lower():
+                details_parts.append("Требуется: 'согласование менеджера (из текста)'")
 
             if details_parts:
                 response_message = f"✅ Запрос на проверку задач принят. Критерии: {'; '.join(details_parts)}."
@@ -229,56 +241,48 @@ class ActionProcessRequest(Action):
                 response_message = "✅ Запрос на проверку задач принят (без уточняющих критериев)."
 
         elif intent_name == "check_employment_calendar":
-            calendar_params = {}
-            # Check for "my" calendar implicitly or explicitly
-            user_specified = False
+            calendar_params = {"user": None}  # Default user to None
+            dates = []
+
             for ent in extracted_data_for_backend["entities"]:
                 if ent["entity"] == "name":
                     if ent["value"].lower() in ["мой", "моя", "моё", "моём", "мои", "меня", "мне", "мной", "я"]:
-                        details_parts.append("Календарь для: 'текущего пользователя (мой)'")
                         calendar_params["user"] = "current_user"
-                        user_specified = True
                     else:
-                        details_parts.append(f"Календарь для: '{ent['value']}'")
                         calendar_params["user"] = ent["value"]
-                        user_specified = True
+                elif ent["entity"] == "date":
+                    dates.append(ent["value"])
                 elif ent["entity"] not in calendar_params:
                     calendar_params[ent["entity"]] = ent["value"]
                 elif isinstance(calendar_params[ent["entity"]], list):
                     calendar_params[ent["entity"]].append(ent["value"])
-                else:  # convert to list if multiple entities of same type (e.g. multiple dates for a range)
+                else:
                     calendar_params[ent["entity"]] = [calendar_params[ent["entity"]], ent["value"]]
 
-            if not user_specified and any(keyword in latest_message_text.lower() for keyword in
-                                          ["мой ", "моя ", "моё ", "моём ", "мои ", "меня ", "мне ", "мной ", " я "]):
+            if calendar_params["user"] == "current_user":
                 details_parts.append("Календарь для: 'текущего пользователя (мой)'")
-                calendar_params["user"] = "current_user"
-            elif not user_specified and "календарь" in latest_message_text.lower() and not any(
+            elif calendar_params.get("user"):
+                details_parts.append(f"Календарь для: '{calendar_params.get('user')}'")
+            elif any(keyword in latest_message_text.lower() for keyword in
+                     ["мой ", "моя ", "моё ", "моём ", "мои ", "меня ", "мне ", "мной ", " я "]):
+                details_parts.append("Календарь для: 'текущего пользователя (мой)'")
+            elif "календарь" in latest_message_text.lower() and not any(
                     e['entity'] == 'name' for e in extracted_data_for_backend["entities"]):
-                details_parts.append(
-                    "Календарь для: 'текущего пользователя (по умолчанию)'")  # Default to current user if no name
-                calendar_params["user"] = "current_user"
+                details_parts.append("Календарь для: 'текущего пользователя (по умолчанию)'")
 
-            if calendar_params.get("date"):
-                # Handle multiple date entities (e.g., range, duration)
-                if isinstance(calendar_params.get("date"), list):
-                    dates_str = "', '".join(calendar_params.get("date"))
-                    details_parts.append(f"Период/Время: '{dates_str}'")
-                else:
-                    details_parts.append(f"Период/Время: '{calendar_params.get('date')}'")
-
+            if dates: details_parts.append(f"Период/Время: '{', '.join(dates)}'")
             if calendar_params.get("room_name"): details_parts.append(f"Ресурс: '{calendar_params.get('room_name')}'")
             if calendar_params.get("event_name"): details_parts.append(
                 f"Тип события: '{calendar_params.get('event_name')}'")
 
-            # Contextual understanding for slot types, conflicts, etc.
             if "свободные слоты" in latest_message_text.lower() or \
                     "свободное время" in latest_message_text.lower() or \
                     "временные окна без встреч" in latest_message_text.lower():
                 details_parts.append("Тип запроса: 'поиск свободных слотов'")
             elif "занятые часы" in latest_message_text.lower() or \
-                    "загруженных дней" in latest_message_text.lower():
-                details_parts.append("Тип запроса: 'поиск занятых слотов'")
+                    "загруженных дней" in latest_message_text.lower() or \
+                    "загрузку" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск занятых слотов/загрузки'")
             elif "конфликты" in latest_message_text.lower():
                 details_parts.append("Тип запроса: 'поиск конфликтов'")
 
@@ -289,7 +293,6 @@ class ActionProcessRequest(Action):
                 response_message = f"✅ Запрос по календарю занятости принят. Критерии: {'; '.join(details_parts)}."
             else:
                 response_message = "✅ Запрос по календарю занятости принят (без уточняющих критериев)."
-
 
         elif intent_name == "greet":
             response_message = "Привет! Чем могу помочь?"

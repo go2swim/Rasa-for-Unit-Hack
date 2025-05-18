@@ -895,40 +895,52 @@ intents:
       use_entities:
         - name
         - department
-        - project # Теперь может иметь роль
+        - project
         - age_exact
         - age_older_than
         - age_younger_than
         - birthday_specifier
-        - skill # Новая сущность
+        - skill
   - search_event:
       use_entities:
         - event_name
         - date
-        - location # Новая сущность для событий
-        - event_category # Новая сущность для событий
-        - department # Может использоваться для фильтрации событий по отделу
-        - organizer # Новая сущность для событий
-  - find_birthday: # Этот интент остается для общего поиска ДР
+        - location
+        - event_category
+        - department
+        - organizer
+  - find_birthday:
       use_entities:
         - name
+        - department
+        - project
+        - age_older_than
+        - age_younger_than
+        - birthday_specifier
         - date
   - check_task:
       use_entities:
         - task_name
+        - name
         - project
         - date
-  - check_employment_calendar:
+        - task_status
+        - task_priority
+        - task_tag
+  - check_employment_calendar: # Проверка календаря занятости
       use_entities:
-        - name
-        - date
-        - room_name # Добавлено для согласованности с NLU
+        - name # Чей календарь ("мой", "Петрова")
+        - date # Период, дата, время ("сегодня", "завтра", "на этой неделе", "20 мая", "до 12:00")
+        - room_name # Зарезервированные переговорки
+        - event_name # Тип события для фильтрации ("встречи", "совещания")
+        # duration - можно пробовать извлекать как часть date или бэкенд будет парсить из текста
+        # slot_type - (свободные/занятые) - определяется контекстом запроса и ключевыми словами
 
 entities:
   - name
   - department
   - project
-  - event_name
+  - event_name # Может использоваться и в check_employment_calendar для типа события
   - date
   - task_name
   - age_exact
@@ -936,10 +948,14 @@ entities:
   - age_younger_than
   - birthday_specifier
   - skill
-  - location # Новая сущность
-  - event_category # Новая сущность
-  - organizer # Новая сущность
-  - room_name # Новая сущность
+  - location
+  - event_category # Может использоваться и в check_employment_calendar для типа события
+  - organizer
+  - room_name
+  - task_status
+  - task_priority
+  - task_tag
+  # Новые сущности пока не добавляем, пробуем обойтись существующими и контекстом
 
 slots:
   name:
@@ -960,7 +976,7 @@ slots:
     mappings:
       - type: from_entity
         entity: project
-  event_name:
+  event_name: # Существующий слот, будет использоваться шире
     type: text
     influence_conversation: false
     mappings:
@@ -1008,30 +1024,48 @@ slots:
     mappings:
       - type: from_entity
         entity: skill
-  location: # Новый слот
+  location:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: location
-  event_category: # Новый слот
+  event_category: # Существующий слот, может использоваться шире
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: event_category
-  organizer: # Новый слот
+  organizer:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: organizer
-  room_name: # Новый слот
+  room_name:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: room_name
+  task_status:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_status
+  task_priority:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_priority
+  task_tag:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_tag
 
 responses:
   utter_greet:
@@ -1046,9 +1080,14 @@ responses:
   utter_ask_details_event:
     - text: "Какое мероприятие, категорию, дату или место проведения вы ищете?"
     - text: "Уточните название мероприятия, его тип, дату, место или кто организатор?"
+  utter_ask_details_birthday:
+    - text: "Чьи дни рождения вас интересуют? Можно уточнить период, отдел, проект или возраст."
   utter_ask_details_task:
-    - text: "Уточните название задачи, проекта или дату."
-  utter_processing_request: # Общий ответ, который может быть использован перед вызовом action
+    - text: "Уточните название задачи, проекта, исполнителя, статус, приоритет, тег или дату."
+    - text: "Какие задачи вы ищете? Можно указать проект, исполнителя, дедлайн, статус, приоритет или метку."
+  utter_ask_details_calendar:
+    - text: "Чей календарь и на какой период вас интересует? Можно уточнить тип события или длительность."
+  utter_processing_request:
     - text: "Понял, обрабатываю ваш запрос..."
 
 actions:
@@ -1074,29 +1113,43 @@ intents:
       use_entities:
         - name
         - department
-        - project # Теперь может иметь роль
+        - project
         - age_exact
         - age_older_than
         - age_younger_than
         - birthday_specifier
-        - skill # Новая сущность
+        - skill
   - search_event:
       use_entities:
         - event_name
         - date
+        - location
+        - event_category
+        - department
+        - organizer
   - find_birthday:
       use_entities:
         - name
+        - department
+        - project
+        - age_older_than
+        - age_younger_than
+        - birthday_specifier
         - date
   - check_task:
       use_entities:
-        - task_name
-        - project
-        - date
+        - task_name # Название конкретной задачи
+        - name # Исполнитель или тот, чьи задачи ищут (например, "мои" или "Петрова")
+        - project # Проект, к которому относится задача
+        - date # Дедлайн, дата создания, период
+        - task_status # Новая сущность: "невыполненные", "в процессе", "завершенные"
+        - task_priority # Новая сущность: "высокий", "низкий"
+        - task_tag # Новая сущность: "отчет", "дизайн"
   - check_employment_calendar:
       use_entities:
         - name
         - date
+        - room_name
 
 entities:
   - name
@@ -1110,6 +1163,13 @@ entities:
   - age_younger_than
   - birthday_specifier
   - skill
+  - location
+  - event_category
+  - organizer
+  - room_name
+  - task_status # Новая сущность
+  - task_priority # Новая сущность
+  - task_tag # Новая сущность
 
 slots:
   name:
@@ -1142,7 +1202,7 @@ slots:
     mappings:
       - type: from_entity
         entity: date
-  task_name:
+  task_name: # Существующий слот
     type: text
     influence_conversation: false
     mappings:
@@ -1178,6 +1238,48 @@ slots:
     mappings:
       - type: from_entity
         entity: skill
+  location:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: location
+  event_category:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_category
+  organizer:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: organizer
+  room_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: room_name
+  task_status: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_status
+  task_priority: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_priority
+  task_tag: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_tag
 
 responses:
   utter_greet:
@@ -1190,9 +1292,13 @@ responses:
     - text: "Можете уточнить имя, фамилию, отдел, проект, навыки, возраст или информацию о дне рождения сотрудника?"
     - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали, включая навыки, возраст или день рождения."
   utter_ask_details_event:
-    - text: "Какое мероприятие или дата вас интересует?"
+    - text: "Какое мероприятие, категорию, дату или место проведения вы ищете?"
+    - text: "Уточните название мероприятия, его тип, дату, место или кто организатор?"
+  utter_ask_details_birthday:
+    - text: "Чьи дни рождения вас интересуют? Можно уточнить период, отдел, проект или возраст."
   utter_ask_details_task:
-    - text: "Уточните название задачи, проекта или дату."
+    - text: "Уточните название задачи, проекта, исполнителя, статус, приоритет, тег или дату."
+    - text: "Какие задачи вы ищете? Можно указать проект, исполнителя, дедлайн, статус, приоритет или метку."
   utter_processing_request: # Общий ответ, который может быть использован перед вызовом action
     - text: "Понял, обрабатываю ваш запрос..."
 
@@ -1303,35 +1409,35 @@ action_endpoint:
 
 # Файл: file.txt
 # Содержимое:
-«Найди дни рождения сегодня»
+«Покажи мой календарь на сегодня»
 
-«Покажи дни рождения этой недели»
+«Какие у меня встречи завтра?»
 
-«Какие дни рождения в этом месяце?»
+«Найди свободные слоты в моём календаре на этой неделе»
 
-«Найди коллег, у которых день рождения зимой»
+«Покажи расписание на 20 мая»
 
-«Какие дни рождения в отделе маркетинга в мае?»
+«Какие у меня занятые часы сегодня?»
 
-«Покажи дни рождения сотрудников старше 30 лет»
+«Найди временные окна без встреч в следующем месяце»
 
-«Найди дни рождения в следующем квартале»
+«Покажи все совещания с участием Петрова в моём календаре»
 
-«Какие у нас ближайшие дни рождения?»
+«Какие у меня встречи на следующую неделю?»
 
-«Покажи дни рождения всех менеджеров проектов»
+«Найди конфликты в моём расписании»
 
-«Найди дни рождения, совпадающие с выходными»
+«Покажи, во сколько у меня обеденный перерыв»
 
-«Какие дни рождения в июле у удалённых сотрудников?»
+«Какие задачи и встречи запланированы на пятницу?»
 
-«Найди сотрудников с днем рождения в понедельник»
+«Найди свободное время для двухчасовой встречи»
 
-«Покажи дни рождения по алфавиту»
+«Покажи календарь на завтра с выделением загруженных дней»
 
-«Найди дни рождения в этом году в сентябре»
+«Какие у меня зарезервированы конференц‑залы на сегодня?»
 
-“у кого из сотрудников отдела Х день рождения в июне
+«Найди утренние встречи (до 12:00) в моём календаре»
 
 ================================================================================
 
@@ -1410,21 +1516,27 @@ def get_nlu_data(text_query):
 
 if __name__ == "__main__":
     queries = [
-        "Найди Анну Смирнову из IT",
-        "Какие мероприятия завтра?",
-        "У кого день рождения в июне?",
-        "Привет",
-        "Покажи мне Волкова Михаила",
-        "телефон Кузнецова",
-        "Сотрудник Лебедева Наталья из бухгалтерии в проекте Гамма",
-        "Какие корпоративные тренинги для отдела IT будут на следующей неделе в Москве?",
-        "Создай внутренний ивент Урок йоги на 10 июня в 18:00 в спортзале",
-        "Добавь меня в список участников встречи Общая планёрка 25 мая",
-        "Когда будет следующий хакатон и кто его организует?",
-        "Покажи все онлайн‑эвенты на следующей неделе",
-        "Найди внутрикорпоративное мероприятие, связанное с благотворительностью",
-        "Напомни всем участникам о встрече SprintReview за час до начала",
-        "Есть ли в этом месяце тимбилдинг для отдела IT?"
+        # ... (существующие запросы для других интентов) ...
+        "Найди мои задачи, требующие согласования менеджера",
+        "Мои открытые задачи с низким приоритетом и тегом документация",
+        # Новые запросы для календаря
+        "Покажи мой календарь на сегодня",
+        "Какие у меня встречи завтра?",
+        "Найди свободные слоты в моём календаре на этой неделе",
+        "Покажи расписание Петрова Ивана на 20 мая",
+        "Какие у меня занятые часы сегодня?",
+        "Найди временные окна без встреч в моем календаре в следующем месяце",
+        "Покажи все совещания с участием Петрова в моём календаре на эту неделю",
+        "Какие у меня встречи на следующую неделю?",
+        "Найди конфликты в моём расписании на завтра",
+        "Покажи, во сколько у меня обеденный перерыв",
+        "Какие задачи и встречи у меня запланированы на пятницу?",
+        "Найди свободное время для двухчасовой встречи завтра",
+        "Покажи календарь Ольги на завтра с выделением загруженных дней",  # "загруженных дней" - не сущность
+        "Какие у меня зарезервированы конференц-залы на сегодня?",
+        "Найди утренние встречи до 12:00 в моём календаре на понедельник",
+        "Свободен ли я завтра в 3 часа дня?",
+        "Занят ли Сидоров для часовой встречи после обеда в среду?"
     ]
 
     for query in queries:
@@ -1440,19 +1552,336 @@ if __name__ == "__main__":
             if entities:
                 print("  Сущности:")
                 for entity in entities:
-                    confidence_val = entity.get('confidence_entity', entity.get('confidence')) # DIET sometimes uses 'confidence'
-                    confidence_str = f", Confidence: {confidence_val:.4f}" if isinstance(confidence_val, float) else ""
+                    confidence_val_raw = entity.get('confidence_entity', entity.get('confidence'))
+                    confidence_str = ""
+                    if confidence_val_raw is not None:
+                        try:
+                            confidence_str = f", Confidence: {float(confidence_val_raw):.4f}"
+                        except ValueError:
+                            confidence_str = f", Confidence: N/A (raw: {confidence_val_raw})"
+
                     role_str = f", Role: {entity.get('role')}" if entity.get('role') else ""
-                    print(f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}'{confidence_str}{role_str}")
+                    print(
+                        f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}'{confidence_str}{role_str}")
             else:
                 print("  Сущности: не найдены")
-            # Для полного вывода можно раскомментировать следующую строку:
             # print(json.dumps(nlu_result, indent=2, ensure_ascii=False))
         print("-" * 30)
 
 ================================================================================
 
 # Файл: actions/actions.py
+# Содержимое:
+from typing import Any, Text, Dict, List
+import logging
+import json
+
+from rasa_sdk import Action, Tracker
+from rasa_sdk.executor import CollectingDispatcher
+from rasa_sdk.events import SlotSet
+
+logger = logging.getLogger(__name__)
+
+
+class ActionProcessRequest(Action):
+    def name(self) -> Text:
+        return "action_process_request"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        intent_name = tracker.latest_message['intent'].get('name')
+        entities_from_tracker = tracker.latest_message.get('entities', [])
+        latest_message_text = tracker.latest_message.get('text')
+
+        extracted_data_for_backend = {
+            "intent": intent_name,
+            "entities": [],
+            "text": latest_message_text
+        }
+
+        log_message_parts = [f"Получен запрос с интентом: {intent_name}"]
+
+        if not entities_from_tracker:
+            log_message_parts.append("- Сущности не найдены.")
+        else:
+            log_message_parts.append("Извлеченные сущности:")
+            for entity in entities_from_tracker:
+                entity_info_for_backend = {
+                    "entity": entity['entity'],
+                    "value": entity['value'],
+                    "start": entity.get('start'),
+                    "end": entity.get('end')
+                }
+                confidence_val_raw = entity.get('confidence_entity', entity.get('confidence'))
+                if confidence_val_raw is not None:
+                    try:  # Добавим try-except на случай если confidence не float
+                        entity_info_for_backend['confidence'] = round(float(confidence_val_raw), 4)
+                    except ValueError:
+                        logger.warning(f"Could not convert confidence to float for entity: {entity}")
+
+                if 'role' in entity:
+                    entity_info_for_backend['role'] = entity['role']
+                if 'group' in entity:
+                    entity_info_for_backend['group'] = entity['group']
+
+                extracted_data_for_backend["entities"].append(entity_info_for_backend)
+
+                role_str = f" (Роль: {entity['role']})" if 'role' in entity else ""
+                group_str = f" (Группа: {entity['group']})" if 'group' in entity else ""
+
+                confidence_log_str = ""
+                if 'confidence' in entity_info_for_backend:
+                    confidence_log_str = f" (Confidence: {entity_info_for_backend['confidence']:.2f})"
+
+                log_message_parts.append(
+                    f"- Тип: {entity['entity']}{role_str}{group_str}, Значение: '{entity['value']}'{confidence_log_str}"
+                )
+
+        final_log_message = "\n".join(log_message_parts)
+        logger.info(f"Processing request: {latest_message_text}\n{final_log_message}")
+        logger.info(
+            f"Data structure for backend (from /model/parse or similar action output):\n{json.dumps(extracted_data_for_backend, ensure_ascii=False, indent=2)}")
+
+        response_message = f"✅ Ваш запрос (интент: {intent_name}) принят. "
+        details_parts = []
+
+        if intent_name == "search_person":
+            # ... (логика без изменений) ...
+            temp_search_params = {}
+            projects_lead = []
+            projects_participant = []
+            skills = []
+
+            for ent in extracted_data_for_backend["entities"]:
+                entity_type = ent["entity"]
+                entity_value = ent["value"]
+                entity_role = ent.get("role")
+
+                if entity_type == "project":
+                    if entity_role == "lead":
+                        projects_lead.append(entity_value)
+                    else:
+                        projects_participant.append(entity_value)
+                elif entity_type == "skill":
+                    skills.append(entity_value)
+                elif entity_type not in temp_search_params:
+                    temp_search_params[entity_type] = entity_value
+                elif isinstance(temp_search_params[entity_type], list):
+                    temp_search_params[entity_type].append(entity_value)
+                else:
+                    temp_search_params[entity_type] = [temp_search_params[entity_type], entity_value]
+
+            if temp_search_params.get("name"): details_parts.append(f"Имя/ФИО: '{temp_search_params.get('name')}'")
+            if temp_search_params.get("department"): details_parts.append(
+                f"Отдел: '{temp_search_params.get('department')}'")
+            if projects_participant: details_parts.append(f"Участие в проекте(ах): '{', '.join(projects_participant)}'")
+            if projects_lead: details_parts.append(f"Руководство проектом(ами): '{', '.join(projects_lead)}'")
+            if skills: details_parts.append(f"Навыки: '{', '.join(skills)}'")
+            if temp_search_params.get("age_exact"): details_parts.append(
+                f"Возраст: '{temp_search_params.get('age_exact')}'")
+            if temp_search_params.get("age_older_than"): details_parts.append(
+                f"Старше: '{temp_search_params.get('age_older_than')}' лет")
+            if temp_search_params.get("age_younger_than"): details_parts.append(
+                f"Младше: '{temp_search_params.get('age_younger_than')}' лет")
+            if temp_search_params.get("birthday_specifier"): details_parts.append(
+                f"День рождения: '{temp_search_params.get('birthday_specifier')}'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на поиск сотрудника принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на поиск сотрудника принят (без уточняющих критериев)."
+
+        elif intent_name == "search_event":
+            # ... (логика без изменений) ...
+            event_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in event_params:
+                    event_params[ent["entity"]] = ent["value"]
+                elif isinstance(event_params[ent["entity"]], list):
+                    event_params[ent["entity"]].append(ent["value"])
+                else:
+                    event_params[ent["entity"]] = [event_params[ent["entity"]], ent["value"]]
+
+            if event_params.get("event_name"): details_parts.append(f"Название: '{event_params.get('event_name')}'")
+            if event_params.get("event_category"): details_parts.append(
+                f"Категория: '{event_params.get('event_category')}'")
+            if event_params.get("date"): details_parts.append(f"Дата/период: '{event_params.get('date')}'")
+            if event_params.get("location"): details_parts.append(f"Место: '{event_params.get('location')}'")
+            if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
+            if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
+
+            action_taken_msg = ""
+            if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
+                action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
+            elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
+                action_taken_msg = "Запрос на добавление участника принят. "
+            elif "напомни" in latest_message_text.lower():
+                action_taken_msg = "Запрос на напоминание о мероприятии принят. "
+            elif "удали" in latest_message_text.lower():
+                action_taken_msg = "Запрос на удаление мероприятия принят. "
+            elif "перенеси" in latest_message_text.lower():
+                action_taken_msg = "Запрос на перенос мероприятия принят. "
+            else:
+                action_taken_msg = "Запрос по мероприятию принят. "
+
+            if details_parts:
+                response_message = f"✅ {action_taken_msg}Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
+
+        elif intent_name == "find_birthday":
+            # ... (логика без изменений) ...
+            birthday_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in birthday_params:
+                    birthday_params[ent["entity"]] = ent["value"]
+                elif isinstance(birthday_params[ent["entity"]], list):
+                    birthday_params[ent["entity"]].append(ent["value"])
+                else:
+                    birthday_params[ent["entity"]] = [birthday_params[ent["entity"]], ent["value"]]
+
+            if birthday_params.get("name"): details_parts.append(f"Имя/ФИО: '{birthday_params.get('name')}'")
+            if birthday_params.get("birthday_specifier"):
+                details_parts.append(f"Период: '{birthday_params.get('birthday_specifier')}'")
+            elif birthday_params.get("date"):
+                details_parts.append(f"Период: '{birthday_params.get('date')}'")
+            if birthday_params.get("department"): details_parts.append(f"Отдел: '{birthday_params.get('department')}'")
+            if birthday_params.get("project"): details_parts.append(f"Проект: '{birthday_params.get('project')}'")
+            if birthday_params.get("age_older_than"): details_parts.append(
+                f"Старше: '{birthday_params.get('age_older_than')}' лет")
+            if birthday_params.get("age_younger_than"): details_parts.append(
+                f"Младше: '{birthday_params.get('age_younger_than')}' лет")
+
+            if "менеджер" in latest_message_text.lower():
+                details_parts.append(f"Должность (текст): 'менеджер'")
+            if "удалён" in latest_message_text.lower():
+                details_parts.append(f"Статус (текст): 'удалённый'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на поиск дней рождения принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на поиск дней рождения принят (без уточняющих критериев)."
+
+        elif intent_name == "check_task":
+            # ... (логика без изменений) ...
+            task_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] == "name" and ent["value"].lower() in ["мои", "моя", "мое", "моё", "мне", "меня",
+                                                                        "мной", "я"]:
+                    details_parts.append("Задачи для: 'текущего пользователя (мои)'")
+                    task_params["assignee"] = "current_user"
+                elif ent["entity"] not in task_params:
+                    task_params[ent["entity"]] = ent["value"]
+                elif isinstance(task_params[ent["entity"]], list):
+                    task_params[ent["entity"]].append(ent["value"])
+                else:
+                    task_params[ent["entity"]] = [task_params[ent["entity"]], ent["value"]]
+
+            if task_params.get("task_name"): details_parts.append(f"Название задачи: '{task_params.get('task_name')}'")
+            if task_params.get("name") and task_params.get("assignee") != "current_user": details_parts.append(
+                f"Исполнитель: '{task_params.get('name')}'")
+            if task_params.get("project"): details_parts.append(f"Проект: '{task_params.get('project')}'")
+            if task_params.get("date"): details_parts.append(f"Дата/Дедлайн: '{task_params.get('date')}'")
+            if task_params.get("task_status"): details_parts.append(f"Статус: '{task_params.get('task_status')}'")
+            if task_params.get("task_priority"): details_parts.append(
+                f"Приоритет: '{task_params.get('task_priority')}'")
+            if task_params.get("task_tag"): details_parts.append(f"Тег: '{task_params.get('task_tag')}'")
+
+            if "assignee" not in task_params and "name" not in task_params and \
+                    any(keyword in latest_message_text.lower() for keyword in
+                        ["мои ", "моя ", "моё ", "мне ", "меня ", "мной ", " я "]):
+                details_parts.append("Задачи для: 'текущего пользователя (мои)'")
+
+            if "напоминания" in latest_message_text.lower() or "напомни" in latest_message_text.lower():
+                details_parts.append("Тип: 'напоминание'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на проверку задач принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на проверку задач принят (без уточняющих критериев)."
+
+        elif intent_name == "check_employment_calendar":
+            calendar_params = {}
+            # Check for "my" calendar implicitly or explicitly
+            user_specified = False
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] == "name":
+                    if ent["value"].lower() in ["мой", "моя", "моё", "моём", "мои", "меня", "мне", "мной", "я"]:
+                        details_parts.append("Календарь для: 'текущего пользователя (мой)'")
+                        calendar_params["user"] = "current_user"
+                        user_specified = True
+                    else:
+                        details_parts.append(f"Календарь для: '{ent['value']}'")
+                        calendar_params["user"] = ent["value"]
+                        user_specified = True
+                elif ent["entity"] not in calendar_params:
+                    calendar_params[ent["entity"]] = ent["value"]
+                elif isinstance(calendar_params[ent["entity"]], list):
+                    calendar_params[ent["entity"]].append(ent["value"])
+                else:  # convert to list if multiple entities of same type (e.g. multiple dates for a range)
+                    calendar_params[ent["entity"]] = [calendar_params[ent["entity"]], ent["value"]]
+
+            if not user_specified and any(keyword in latest_message_text.lower() for keyword in
+                                          ["мой ", "моя ", "моё ", "моём ", "мои ", "меня ", "мне ", "мной ", " я "]):
+                details_parts.append("Календарь для: 'текущего пользователя (мой)'")
+                calendar_params["user"] = "current_user"
+            elif not user_specified and "календарь" in latest_message_text.lower() and not any(
+                    e['entity'] == 'name' for e in extracted_data_for_backend["entities"]):
+                details_parts.append(
+                    "Календарь для: 'текущего пользователя (по умолчанию)'")  # Default to current user if no name
+                calendar_params["user"] = "current_user"
+
+            if calendar_params.get("date"):
+                # Handle multiple date entities (e.g., range, duration)
+                if isinstance(calendar_params.get("date"), list):
+                    dates_str = "', '".join(calendar_params.get("date"))
+                    details_parts.append(f"Период/Время: '{dates_str}'")
+                else:
+                    details_parts.append(f"Период/Время: '{calendar_params.get('date')}'")
+
+            if calendar_params.get("room_name"): details_parts.append(f"Ресурс: '{calendar_params.get('room_name')}'")
+            if calendar_params.get("event_name"): details_parts.append(
+                f"Тип события: '{calendar_params.get('event_name')}'")
+
+            # Contextual understanding for slot types, conflicts, etc.
+            if "свободные слоты" in latest_message_text.lower() or \
+                    "свободное время" in latest_message_text.lower() or \
+                    "временные окна без встреч" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск свободных слотов'")
+            elif "занятые часы" in latest_message_text.lower() or \
+                    "загруженных дней" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск занятых слотов'")
+            elif "конфликты" in latest_message_text.lower():
+                details_parts.append("Тип запроса: 'поиск конфликтов'")
+
+            if "обеденный перерыв" in latest_message_text.lower() and not calendar_params.get("event_name"):
+                details_parts.append("Тип события: 'обеденный перерыв'")
+
+            if details_parts:
+                response_message = f"✅ Запрос по календарю занятости принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос по календарю занятости принят (без уточняющих критериев)."
+
+
+        elif intent_name == "greet":
+            response_message = "Привет! Чем могу помочь?"
+        elif intent_name == "goodbye":
+            response_message = "До свидания!"
+        elif intent_name == "affirm":
+            response_message = "Понял."
+        elif intent_name == "deny":
+            response_message = "Хорошо."
+        elif intent_name == "bot_challenge":
+            response_message = "Я AI-ассистент, созданный для помощи в корпоративных задачах."
+
+        dispatcher.utter_message(text=response_message)
+        return []
+
+================================================================================
+
+# Файл: actions/actions.py~
 # Содержимое:
 from typing import Any, Text, Dict, List
 import logging
@@ -1496,8 +1925,11 @@ class ActionProcessRequest(Action):
                     "start": entity.get('start'),
                     "end": entity.get('end')
                 }
-                if 'confidence_entity' in entity:
-                    entity_info_for_backend['confidence'] = round(entity['confidence_entity'], 4)
+                # Ensure 'confidence' field exists, preferring 'confidence_entity'
+                confidence_val_raw = entity.get('confidence_entity', entity.get('confidence'))
+                if confidence_val_raw is not None:
+                    entity_info_for_backend['confidence'] = round(float(confidence_val_raw), 4)
+
                 if 'role' in entity:
                     entity_info_for_backend['role'] = entity['role']
                 if 'group' in entity:  # For regex entities
@@ -1506,12 +1938,14 @@ class ActionProcessRequest(Action):
                 extracted_data_for_backend["entities"].append(entity_info_for_backend)
 
                 role_str = f" (Роль: {entity['role']})" if 'role' in entity else ""
-                group_str = f" (Группа: {entity['group']})" if 'group' in entity else ""  # For regex
-                confidence_val = entity.get('confidence_entity', 'N/A')
-                confidence_str = f" (Confidence: {confidence_val:.2f})" if isinstance(confidence_val, float) else ""
+                group_str = f" (Группа: {entity['group']})" if 'group' in entity else ""
+
+                confidence_log_str = ""
+                if 'confidence' in entity_info_for_backend:  # Use the rounded one for log
+                    confidence_log_str = f" (Confidence: {entity_info_for_backend['confidence']:.2f})"
 
                 log_message_parts.append(
-                    f"- Тип: {entity['entity']}{role_str}{group_str}, Значение: '{entity['value']}'{confidence_str}"
+                    f"- Тип: {entity['entity']}{role_str}{group_str}, Значение: '{entity['value']}'{confidence_log_str}"
                 )
 
         final_log_message = "\n".join(log_message_parts)
@@ -1524,6 +1958,7 @@ class ActionProcessRequest(Action):
         details_parts = []
 
         if intent_name == "search_person":
+            # ... (логика без изменений) ...
             temp_search_params = {}
             projects_lead = []
             projects_participant = []
@@ -1538,209 +1973,6 @@ class ActionProcessRequest(Action):
                     if entity_role == "lead":
                         projects_lead.append(entity_value)
                     else:
-                        projects_participant.append(entity_value)
-                elif entity_type == "skill":
-                    skills.append(entity_value)
-                elif entity_type not in temp_search_params:  # name, department, age_exact etc.
-                    temp_search_params[entity_type] = entity_value
-                elif isinstance(temp_search_params[entity_type], list):
-                    temp_search_params[entity_type].append(entity_value)
-                else:  # convert to list if multiple values for same entity type (e.g. multiple names)
-                    temp_search_params[entity_type] = [temp_search_params[entity_type], entity_value]
-
-            if temp_search_params.get("name"): details_parts.append(f"Имя/ФИО: '{temp_search_params.get('name')}'")
-            if temp_search_params.get("department"): details_parts.append(
-                f"Отдел: '{temp_search_params.get('department')}'")
-            if projects_participant: details_parts.append(f"Участие в проекте(ах): '{', '.join(projects_participant)}'")
-            if projects_lead: details_parts.append(f"Руководство проектом(ами): '{', '.join(projects_lead)}'")
-            if skills: details_parts.append(f"Навыки: '{', '.join(skills)}'")
-            if temp_search_params.get("age_exact"): details_parts.append(
-                f"Возраст: '{temp_search_params.get('age_exact')}'")
-            if temp_search_params.get("age_older_than"): details_parts.append(
-                f"Старше: '{temp_search_params.get('age_older_than')}' лет")
-            if temp_search_params.get("age_younger_than"): details_parts.append(
-                f"Младше: '{temp_search_params.get('age_younger_than')}' лет")
-            if temp_search_params.get("birthday_specifier"): details_parts.append(
-                f"День рождения: '{temp_search_params.get('birthday_specifier')}'")
-
-            if details_parts:
-                response_message = f"✅ Запрос на поиск сотрудника принят. Критерии: {'; '.join(details_parts)}."
-            else:
-                response_message = "✅ Запрос на поиск сотрудника принят (без уточняющих критериев)."
-
-        elif intent_name == "search_event":
-            event_params = {}
-            for ent in extracted_data_for_backend["entities"]:
-                if ent["entity"] not in event_params:
-                    event_params[ent["entity"]] = ent["value"]
-                elif isinstance(event_params[ent["entity"]], list):
-                    event_params[ent["entity"]].append(ent["value"])
-                else:
-                    event_params[ent["entity"]] = [event_params[ent["entity"]], ent["value"]]
-
-            if event_params.get("event_name"): details_parts.append(f"Название: '{event_params.get('event_name')}'")
-            if event_params.get("event_category"): details_parts.append(
-                f"Категория: '{event_params.get('event_category')}'")
-            if event_params.get("date"): details_parts.append(f"Дата/период: '{event_params.get('date')}'")
-            if event_params.get("location"): details_parts.append(f"Место: '{event_params.get('location')}'")
-            if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
-            if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
-
-            # Check for action keywords in original text
-            action_taken_msg = ""
-            if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
-                action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
-            elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
-                action_taken_msg = "Запрос на добавление участника принят. "
-            elif "напомни" in latest_message_text.lower():
-                action_taken_msg = "Запрос на напоминание о мероприятии принят. "
-            elif "удали" in latest_message_text.lower():
-                action_taken_msg = "Запрос на удаление мероприятия принят. "
-            elif "перенеси" in latest_message_text.lower():
-                action_taken_msg = "Запрос на перенос мероприятия принят. "
-            else:
-                action_taken_msg = "Запрос по мероприятию принят. "
-
-            if details_parts:
-                response_message = f"✅ {action_taken_msg}Критерии: {'; '.join(details_parts)}."
-            else:
-                response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
-
-
-        elif intent_name == "find_birthday":
-            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
-                               "всех сотрудников")
-            birthday_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                                 "не указана")
-            response_message = f"✅ Запрос на поиск дней рождения для '{person_name}' (дата/период: '{birthday_date}') принят."
-
-        elif intent_name == "check_task":
-            task_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'task_name'),
-                             "не указана")
-            project_name = next(
-                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'project'), "не указан")
-            task_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                             "не указана")
-            response_message = f"✅ Запрос на проверку задачи '{task_name}' (проект: '{project_name}', дата: '{task_date}') принят."
-
-        elif intent_name == "check_employment_calendar":
-            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
-                               "не указан")
-            calendar_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                                 "не указана")
-            room_name_val = next(
-                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'room_name'), None)
-            room_str = f", ресурс: '{room_name_val}'" if room_name_val else ""
-            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}'{room_str}) принят."
-
-        elif intent_name == "greet":
-            response_message = "Привет! Чем могу помочь?"
-        elif intent_name == "goodbye":
-            response_message = "До свидания!"
-        elif intent_name == "affirm":
-            response_message = "Понял."
-        elif intent_name == "deny":
-            response_message = "Хорошо."
-        elif intent_name == "bot_challenge":
-            response_message = "Я AI-ассистент, созданный для помощи в корпоративных задачах."
-
-        dispatcher.utter_message(text=response_message)
-        return []
-
-================================================================================
-
-# Файл: actions/actions.py~
-# Содержимое:
-from typing import Any, Text, Dict, List
-import logging
-import json
-
-from rasa_sdk import Action, Tracker
-from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet  # Можем использовать для установки слотов, если понадобится
-
-logger = logging.getLogger(__name__)
-
-
-class ActionProcessRequest(Action):
-    def name(self) -> Text:
-        return "action_process_request"
-
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-
-        intent_name = tracker.latest_message['intent'].get('name')
-        entities_from_tracker = tracker.latest_message.get('entities', [])
-
-        # Формируем структурированные данные для отправки на бэкенд
-        # Этот JSON будет содержать все детали для вашего бэкенда
-        extracted_data_for_backend = {
-            "intent": intent_name,
-            "entities": [],  # Будет заполнен сущностями с их ролями
-            "text": tracker.latest_message.get('text')
-        }
-
-        # Логирование и подготовка информации для ответа (если он нужен от action)
-        log_message_parts = [f"Получен запрос с интентом: {intent_name}"]
-
-        if not entities_from_tracker:
-            log_message_parts.append("- Сущности не найдены.")
-        else:
-            log_message_parts.append("Извлеченные сущности:")
-            for entity in entities_from_tracker:
-                entity_info_for_backend = {
-                    "entity": entity['entity'],
-                    "value": entity['value'],
-                    "start": entity.get('start'),
-                    "end": entity.get('end')
-                }
-                if 'confidence_entity' in entity:
-                    entity_info_for_backend['confidence'] = round(entity['confidence_entity'], 4)
-                if 'role' in entity:
-                    entity_info_for_backend['role'] = entity['role']
-                if 'group' in entity:
-                    entity_info_for_backend['group'] = entity['group']
-
-                extracted_data_for_backend["entities"].append(entity_info_for_backend)
-
-                # Формируем строку для лога
-                role_str = f" (Роль: {entity['role']})" if 'role' in entity else ""
-                log_message_parts.append(
-                    f"- Тип: {entity['entity']}{role_str}, Значение: '{entity['value']}'"
-                    f" (Confidence: {entity.get('confidence_entity', 'N/A'):.2f})"
-                )
-
-        final_log_message = "\n".join(log_message_parts)
-        logger.info(f"Processing request: {tracker.latest_message.get('text')}\n{final_log_message}")
-        # Логируем JSON, который будет отправлен на бэкенд (или который бэкенд получит от /model/parse)
-        logger.info(
-            f"Data structure for backend (from /model/parse or similar action output):\n{json.dumps(extracted_data_for_backend, ensure_ascii=False, indent=2)}")
-
-        # --- Формирование ответа пользователю (для демонстрации в чате) ---
-        # Этот блок нужен, если вы хотите, чтобы Rasa action отвечал в чат.
-        # Если вы используете только /model/parse, этот блок не будет выполняться для внешних API запросов.
-
-        response_message = f"✅ Ваш запрос (интент: {intent_name}) принят. "
-        details_parts = []
-
-        if intent_name == "search_person":
-            # Собираем параметры из extracted_data_for_backend для формирования красивого ответа
-            # Бэкенд будет использовать сам extracted_data_for_backend
-            temp_search_params = {}
-            projects_lead = []
-            projects_participant = []
-            skills = []
-
-            for ent in extracted_data_for_backend["entities"]:
-                entity_type = ent["entity"]
-                entity_value = ent["value"]
-                entity_role = ent.get("role")
-
-                if entity_type == "project":
-                    if entity_role == "lead":
-                        projects_lead.append(entity_value)
-                    else:  # Если роли нет или она другая, считаем участником
                         projects_participant.append(entity_value)
                 elif entity_type == "skill":
                     skills.append(entity_value)
@@ -1772,35 +2004,126 @@ class ActionProcessRequest(Action):
                 response_message = "✅ Запрос на поиск сотрудника принят (без уточняющих критериев)."
 
         elif intent_name == "search_event":
-            event_name = next(
-                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'event_name'),
-                "не указано")
-            event_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                              "не указана")
-            response_message = f"✅ Запрос на поиск мероприятия '{event_name}' (дата: '{event_date}') принят."
+            # ... (логика без изменений) ...
+            event_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in event_params:
+                    event_params[ent["entity"]] = ent["value"]
+                elif isinstance(event_params[ent["entity"]], list):
+                    event_params[ent["entity"]].append(ent["value"])
+                else:
+                    event_params[ent["entity"]] = [event_params[ent["entity"]], ent["value"]]
+
+            if event_params.get("event_name"): details_parts.append(f"Название: '{event_params.get('event_name')}'")
+            if event_params.get("event_category"): details_parts.append(
+                f"Категория: '{event_params.get('event_category')}'")
+            if event_params.get("date"): details_parts.append(f"Дата/период: '{event_params.get('date')}'")
+            if event_params.get("location"): details_parts.append(f"Место: '{event_params.get('location')}'")
+            if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
+            if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
+
+            action_taken_msg = ""
+            if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
+                action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
+            elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
+                action_taken_msg = "Запрос на добавление участника принят. "
+            elif "напомни" in latest_message_text.lower():
+                action_taken_msg = "Запрос на напоминание о мероприятии принят. "
+            elif "удали" in latest_message_text.lower():
+                action_taken_msg = "Запрос на удаление мероприятия принят. "
+            elif "перенеси" in latest_message_text.lower():
+                action_taken_msg = "Запрос на перенос мероприятия принят. "
+            else:
+                action_taken_msg = "Запрос по мероприятию принят. "
+
+            if details_parts:
+                response_message = f"✅ {action_taken_msg}Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
 
         elif intent_name == "find_birthday":
-            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
-                               "всех сотрудников")
-            birthday_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                                 "не указана")
-            response_message = f"✅ Запрос на поиск дней рождения для '{person_name}' (дата/период: '{birthday_date}') принят."
+            # ... (логика без изменений) ...
+            birthday_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in birthday_params:
+                    birthday_params[ent["entity"]] = ent["value"]
+                elif isinstance(birthday_params[ent["entity"]], list):
+                    birthday_params[ent["entity"]].append(ent["value"])
+                else:
+                    birthday_params[ent["entity"]] = [birthday_params[ent["entity"]], ent["value"]]
+
+            if birthday_params.get("name"): details_parts.append(f"Имя/ФИО: '{birthday_params.get('name')}'")
+            if birthday_params.get("birthday_specifier"):
+                details_parts.append(f"Период: '{birthday_params.get('birthday_specifier')}'")
+            elif birthday_params.get("date"):
+                details_parts.append(f"Период: '{birthday_params.get('date')}'")
+            if birthday_params.get("department"): details_parts.append(f"Отдел: '{birthday_params.get('department')}'")
+            if birthday_params.get("project"): details_parts.append(f"Проект: '{birthday_params.get('project')}'")
+            if birthday_params.get("age_older_than"): details_parts.append(
+                f"Старше: '{birthday_params.get('age_older_than')}' лет")
+            if birthday_params.get("age_younger_than"): details_parts.append(
+                f"Младше: '{birthday_params.get('age_younger_than')}' лет")
+
+            if "менеджер" in latest_message_text.lower():
+                details_parts.append(f"Должность (текст): 'менеджер'")
+            if "удалён" in latest_message_text.lower():
+                details_parts.append(f"Статус (текст): 'удалённый'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на поиск дней рождения принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на поиск дней рождения принят (без уточняющих критериев)."
 
         elif intent_name == "check_task":
-            task_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'task_name'),
-                             "не указана")
-            project_name = next(
-                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'project'), "не указан")
-            task_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                             "не указана")
-            response_message = f"✅ Запрос на проверку задачи '{task_name}' (проект: '{project_name}', дата: '{task_date}') принят."
+            task_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                # Handle cases where "мои" or "меня" is extracted as name
+                if ent["entity"] == "name" and ent["value"].lower() in ["мои", "моя", "мое", "моё", "мне", "меня",
+                                                                        "мной", "я"]:
+                    details_parts.append("Задачи для: 'текущего пользователя (мои)'")
+                    task_params["assignee"] = "current_user"  # Special marker for backend
+                elif ent["entity"] not in task_params:
+                    task_params[ent["entity"]] = ent["value"]
+                elif isinstance(task_params[ent["entity"]], list):
+                    task_params[ent["entity"]].append(ent["value"])
+                else:
+                    task_params[ent["entity"]] = [task_params[ent["entity"]], ent["value"]]
+
+            if task_params.get("task_name"): details_parts.append(f"Название задачи: '{task_params.get('task_name')}'")
+            if task_params.get("name") and task_params.get("assignee") != "current_user": details_parts.append(
+                f"Исполнитель: '{task_params.get('name')}'")
+            if task_params.get("project"): details_parts.append(f"Проект: '{task_params.get('project')}'")
+            if task_params.get("date"): details_parts.append(f"Дата/Дедлайн: '{task_params.get('date')}'")
+            if task_params.get("task_status"): details_parts.append(f"Статус: '{task_params.get('task_status')}'")
+            if task_params.get("task_priority"): details_parts.append(
+                f"Приоритет: '{task_params.get('task_priority')}'")
+            if task_params.get("task_tag"): details_parts.append(f"Тег: '{task_params.get('task_tag')}'")
+
+            # Check for implicit "my tasks" if no name entity was extracted but text implies it
+            if "assignee" not in task_params and "name" not in task_params and \
+                    any(keyword in latest_message_text.lower() for keyword in
+                        ["мои ", "моя ", "моё ", "мне ", "меня ", "мной ", " я "]):
+                details_parts.append("Задачи для: 'текущего пользователя (мои)'")
+
+            if "напоминания" in latest_message_text.lower() or "напомни" in latest_message_text.lower():
+                details_parts.append("Тип: 'напоминание'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на проверку задач принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на проверку задач принят (без уточняющих критериев)."
+
 
         elif intent_name == "check_employment_calendar":
+            # ... (логика без изменений) ...
             person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
                                "не указан")
             calendar_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
                                  "не указана")
-            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}') принят."
+            room_name_val = next(
+                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'room_name'), None)
+            room_str = f", ресурс: '{room_name_val}'" if room_name_val else ""
+            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}'{room_str}) принят."
 
         elif intent_name == "greet":
             response_message = "Привет! Чем могу помочь?"
@@ -1812,15 +2135,9 @@ class ActionProcessRequest(Action):
             response_message = "Хорошо."
         elif intent_name == "bot_challenge":
             response_message = "Я AI-ассистент, созданный для помощи в корпоративных задачах."
-        # Добавьте другие специфичные ответы, если необходимо
 
         dispatcher.utter_message(text=response_message)
-
-        # Если вы хотите, чтобы это действие возвращало структурированные данные через API Rasa (а не только через /model/parse),
-        # то можно использовать dispatcher.utter_custom_json(extracted_data_for_backend)
-        # Но для вашего случая (использование /model/parse) это не требуется.
-
-        return []  # Никаких событий для изменения диалога не возвращаем, если это чисто NLU + Rules
+        return []
 
 ================================================================================
 
@@ -2234,35 +2551,236 @@ nlu:
       - Будет ли запись [онлайн-лекции](event_category) по [Data Science](event_name)?
 
 
-  - intent: find_birthday
+  - intent: find_birthday # Общий поиск ДР или поиск ДР как основная цель
     examples: |
-      - У кого день рождения [в этом месяце](date)?
+      # --- Базовые запросы по дате/периоду ---
+      - У кого день рождения [в этом месяце](birthday_specifier)?
+      - Дни рождения [в июне](birthday_specifier)
+      - Покажи список именинников на [сегодня](birthday_specifier)
+      - Чьи дни рождения [на этой неделе](birthday_specifier)?
+      - Кто отмечает ДР [завтра](birthday_specifier)?
+      - Есть ли в календаре дня рождения коллег в [мае](birthday_specifier)?
+      - Найди дни рождения [сегодня](birthday_specifier)
+      - Покажи дни рождения [этой недели](birthday_specifier)
+      - Какие дни рождения [в этом месяце](birthday_specifier)?
+      - Найди коллег, у которых день рождения [зимой](birthday_specifier)
+      - Найди дни рождения в [следующем квартале](birthday_specifier)
+      - Какие у нас [ближайшие](birthday_specifier) дни рождения?
+      - Найди дни рождения, совпадающие с [выходными](birthday_specifier)
+      - Найди сотрудников с днем рождения в [понедельник](birthday_specifier)
+      - Найди дни рождения [в этом году в сентябре](birthday_specifier)
+      - Кто празднует день рождения [на следующей неделе](birthday_specifier)?
+      - Именинники [текущего месяца](birthday_specifier)
+      - Покажи всех, кто родился [в марте](birthday_specifier)
+      - Дни рождения [в первой половине года](birthday_specifier)
+      - Дни рождения [во втором квартале](birthday_specifier)
+      - Покажи, кто отмечает день рождения [в ближайший месяц](birthday_specifier)
+      - Список дней рождений на [август](birthday_specifier)
+      - Кто родился [летом](birthday_specifier)?
+      - Посмотреть дни рождения [сотрудников](name) [на сегодня](birthday_specifier)
+      - Дни рождения [в октябре](birthday_specifier)
+      - Ищу [всех](name), у кого день рождения [в ноябре](birthday_specifier)
+      - Напомни о днях рождения [на завтра](birthday_specifier)
+      - Покажи календарь дней рождений на [этот квартал](birthday_specifier)
+      - Отфильтруй дни рождения по [декабрю](birthday_specifier)
+      - ДР [на сегодня](birthday_specifier)
+      - ДР [на этой неделе](birthday_specifier)
+      - ДР [в этом месяце](birthday_specifier)
+      - ДР [в следующем месяце](birthday_specifier)
+
+      # --- Запросы с именем ---
       - Когда ДР у [Ивана Петрова](name)?
-      - Дни рождения [в июне](date)
-      - Покажи список именинников на [сегодня](date)
-      - У [Анны](name) скоро день рождения?
-      - Чьи дни рождения [на этой неделе](date)?
-      - Кто отмечает ДР [завтра](date)?
-      - Есть ли в календаре дня рождения коллег в [мае](date)?
+      - У [Анны](name) [скоро](birthday_specifier) день рождения?
+      - День рождения [Сергея Кузнецова](name)
+      - Когда отмечает день рождения [Мария Волкова](name)?
+      - Подскажи дату рождения [Алексея Смирнова](name)
+
+      # --- Запросы с отделом ---
+      - Какие дни рождения в [отделе маркетинга](department) в [мае](birthday_specifier)?
+      - У кого из [сотрудников](name) [отдела кадров](department) день рождения [в июне](birthday_specifier)?
+      - Есть ли у кого-то ДР [на следующей неделе](birthday_specifier) в [IT отделе](department)?
+      - Дни рождения [в октябре](birthday_specifier) для [отдела аналитики](department)
+      - Кто из [отдела продаж](department) именинник [в этом месяце](birthday_specifier)?
+      - Именинники [отдела разработки](department) [на этой неделе](birthday_specifier)
+
+      # --- Запросы с проектом ---
+      - Мне нужны дни рождения [в этом месяце](birthday_specifier) для [проектной команды Альфа](project)
+      - Дни рождения [сотрудников](name) [проекта Омега](project) [в текущем месяце](birthday_specifier)
+      - Кто из [проекта Гамма](project) отмечает день рождения [зимой](birthday_specifier)?
+
+      # --- Запросы с возрастом ---
+      - Покажи дни рождения сотрудников старше [30](age_older_than) лет [в этом месяце](birthday_specifier)
+      - Дни рождения сотрудников младше [25](age_younger_than) лет [на этой неделе](birthday_specifier)
+      - Есть ли именинники [на этой неделе](birthday_specifier) среди тех, кому больше [40](age_older_than)?
+      - Кто из тех, кто младше [30](age_younger_than) лет, празднует ДР [в июле](birthday_specifier)?
+
+      # --- Комбинированные запросы ---
+      - У кого из [отдела маркетинга](department) день рождения [в июне](birthday_specifier) и они старше [28](age_older_than) лет?
+      - Дни рождения [на этой неделе](birthday_specifier) в [IT отделе](department) для сотрудников младше [35](age_younger_than) лет
+      - Именинники [проекта Зенит](project) из [отдела разработка](department), родившиеся [весной](birthday_specifier)
+      - Покажи дни рождения [в этом месяце](birthday_specifier) для [отдела продаж](department), кто старше [30](age_older_than) лет
+      - Дни рождения [в следующем месяце](birthday_specifier) для [сотрудников](name) из [HR](department) в проекте [Найм](project)
+
+      # --- Запросы с "неизвестными" категориями (модель попытается их отнести к birthday_specifier или они будут в тексте) ---
+      - Покажи дни рождения [всех менеджеров проектов](job_title_placeholder) [в этом квартале](birthday_specifier)
+      - Какие дни рождения в [июле](birthday_specifier) у [удалённых сотрудников](status_placeholder)?
+      - Когда празднует день рождения [руководитель отдела маркетинга](job_title_placeholder)?
+  
 
   - intent: check_task
     examples: |
-      - Какие у меня задачи по проекту [Гамма](project)?
-      - Что с задачей [подготовить отчет](task_name)?
-      - Проверь статус задачи [релиз новой версии](task_name) на [эту пятницу](date)
-      - Мои задачи на [сегодня](date)
-      - Какие задачи у [Сергея](name) по проекту [Феникс](project)?
-      - Задачи по [проекту Омега](project)
-      - Что там с [отчетом для клиента](task_name)?
+      # --- Задачи пользователя ("мои") ---
+      - Найди [мои](name) задачи на [сегодня](date)
+      - Какие у [меня](name) задачи по проекту [Гамма](project)?
+      - Что у [меня](name) с задачей [подготовить отчет](task_name)?
+      - [Мои](name) задачи на [сегодня](date)
+      - Покажи [мои](name) [невыполненные](task_status) задачи
+      - [Мои](name) [просроченные](task_status) задачи
+      - Какие задачи у [меня](name) в статусе "[в процессе](task_status)"?
+      - Покажи [мои](name) напоминания на [завтра](date)
+      - [Мои](name) задачи с [высоким приоритетом](task_priority)
+      - [Мои](name) задачи с тегом "[срочно](task_tag)"
+      - Какие у [меня](name) задачи [без дедлайна](date)?
+      - [Мои](name) [завершенные](task_status) задачи за [сегодня](date)
+      - Список [моих](name) задач на [эту неделю](date)
+      - Задачи, где [я](name) [участник](task_role_placeholder) (task_role_placeholder - не сущность, бэк анализирует текст)
+      - Какие [мои](name) задачи [требуют согласования](task_status)?
+      - [Мои](name) задачи, созданные [в прошлом месяце](date)
 
-  - intent: check_employment_calendar
+      # --- Задачи конкретного сотрудника ---
+      - Какие задачи у [Сергея](name) по проекту [Феникс](project)?
+      - Покажи задачи, назначенные на [Петрова](name)
+      - Задачи [Ивана Сидорова](name) на [следующую неделю](date)
+      - Что должна сделать [Анна](name) [сегодня](date)?
+      - [Невыполненные](task_status) задачи [Ольги](name)
+      - Задачи [Михаила](name) с [низким приоритетом](task_priority)
+      - Какие задачи у [Алексея](name) в проекте [Альфа](project) [просрочены](task_status)?
+
+      # --- Задачи по проекту ---
+      - Задачи по [проекту Омега](project)
+      - Какие задачи в проекте [Заря](project) имеют статус "[на проверке](task_status)"?
+      - Список задач для [проекта Восход](project) с дедлайном [в этом месяце](date)
+      - [Открытые](task_status) задачи по [проекту Интеграция](project)
+      - Задачи с [высоким приоритетом](task_priority) в [проекте Релиз](project)
+
+      # --- Фильтрация по дедлайну/дате ---
+      - Покажи задачи с дедлайном на [этот месяц](date)
+      - Какие задачи [просрочены](task_status)?
+      - Задачи на [следующую неделю](date)
+      - Найди задачи, созданные [в прошлом месяце](date)
+      - Какие задачи [без дедлайна](date)?
+      - Задачи с крайним сроком [завтра](date)
+      - Что нужно сделать до [конца недели](date)?
+      - Задачи, которые должны быть выполнены [к пятнице](date)
+      - Покажи задачи с дедлайном [в следующем квартале](date)
+
+      # --- Фильтрация по статусу ---
+      - Какие у меня [невыполненные](task_status) задачи по проекту [Alpha](project)?
+      - Какие задачи в статусе "[в процессе](task_status)"?
+      - Покажи все [завершённые](task_status) задачи за [сегодня](date)
+      - Найди задачи, [требующие согласования](task_status) [менеджера](name)
+      - Задачи со статусом "[отложено](task_status)"
+      - Покажи [открытые](task_status) задачи
+      - Список [новых](task_status) задач
+      - Какие задачи [заблокированы](task_status)?
+      - Задачи [на тестировании](task_status)
+
+      # --- Фильтрация по приоритету ---
+      - Найди задачи с [высоким приоритетом](task_priority)
+      - Задачи с [низким приоритетом](task_priority) на [этой неделе](date)
+      - Покажи [критичные](task_priority) задачи
+      - Задачи [среднего приоритета](task_priority) по проекту [Бета](project)
+
+      # --- Фильтрация по тегу ---
+      - Найди задачи с тегом "[отчет](task_tag)"
+      - Задачи, помеченные как "[дизайн](task_tag)"
+      - Покажи все задачи с меткой "[bug](task_tag)"
+      - Задачи с тегом "[важно](task_tag)" и "[срочно](task_tag)"
+      - Какие задачи имеют тег "[клиентский запрос](task_tag)"?
+
+      # --- Напоминания (как тип задач) ---
+      - Покажи мои напоминания на [завтра](date)
+      - Какие у [меня](name) напоминания [на сегодня](date)?
+      - Напомни [мне](name) о задаче [сделать отчет](task_name) [завтра утром](date)
+      - Установи напоминание по задаче [проверить почту](task_name) на [15:00](date)
+
+      # --- Комбинированные запросы ---
+      - [Мои](name) [невыполненные](task_status) задачи по проекту [Гамма](project) с [высоким приоритетом](task_priority)
+      - Задачи [Петрова](name) в проекте [Альфа](project) с дедлайном на [эту неделю](date) и статусом "[в процессе](task_status)"
+      - Покажи [просроченные](task_status) задачи с тегом "[клиент](task_tag)"
+      - [Завершенные](task_status) задачи [Ивановой](name) по проекту [Омега](project) за [прошлый месяц](date)
+      - Найди [мои](name) задачи с [низким приоритетом](task_priority), тегом "[документация](task_tag)" и дедлайном [в следующем месяце](date)
+      - Какие задачи [требуют согласования](task_status) [менеджером](name) в проекте [Бюджет](project) на [этой неделе](date)?
+      - [Мои](name) задачи по проекту [Веб-сайт](project) со статусом "[открыта](task_status)" и без дедлайна
+      - Задачи с тегом "[маркетинг](task_tag)" и "[реклама](task_tag)" для [отдела маркетинга](department_placeholder) на [этот квартал](date) (department_placeholder - не сущность)
+
+      # --- Уточняющие запросы / запросы о конкретной задаче ---
+      - Что с задачей [подготовить отчет для клиента](task_name)?
+      - Проверь статус задачи [релиз новой версии](task_name) на [эту пятницу](date)
+      - Детали по задаче "[Написать ТЗ](task_name)"
+      - Кто ответственный за задачу "[Исправить баг #123](task_name)"?
+      - Какой дедлайн у задачи "[Разработать модуль Х](task_name)"?
+
+  - intent: check_employment_calendar # Расширенные примеры
     examples: |
+      # --- Календарь текущего пользователя ("мой") ---
+      - Покажи [мой](name) календарь на [сегодня](date)
+      - Какие у [меня](name) [встречи](event_name) [завтра](date)?
+      - Найди [свободные слоты](slot_type_placeholder) в [моём](name) календаре на [этой неделе](date) (slot_type_placeholder - не сущность)
+      - Какие у [меня](name) [занятые часы](slot_type_placeholder) [сегодня](date)?
+      - Найди [временные окна без встреч](slot_type_placeholder) в [моём](name) календаре в [следующем месяце](date)
+      - Покажи все [совещания](event_name) с участием [Петрова](name) в [моём](name) календаре [на этой неделе](date)
+      - Какие у [меня](name) [встречи](event_name) на [следующую неделю](date)?
+      - Найди [конфликты](conflict_placeholder) в [моём](name) расписании на [завтра](date) (conflict_placeholder - не сущность)
+      - Покажи, во сколько у [меня](name) [обеденный перерыв](event_name)
+      - Какие [задачи](task_name_placeholder) и [встречи](event_name) у [меня](name) запланированы на [пятницу](date)?
+      - Найди [свободное время](slot_type_placeholder) для [двухчасовой](date) [встречи](event_name) в [моём](name) календаре [завтра](date)
+      - Покажи [мой](name) календарь на [завтра](date) с выделением [загруженных дней](load_specifier_placeholder) (load_specifier_placeholder - не сущность)
+      - Какие у [меня](name) зарезервированы [конференц-залы](room_name) на [сегодня](date)?
+      - Найди [утренние встречи (до 12:00)](date) в [моём](name) календаре
+      - [Моё](name) расписание на [эту неделю](date)
+      - Свободен ли [я](name) [завтра в обед](date)?
+      - Что у [меня](name) по плану на [понедельник утром](date)?
+      - Доступен ли [я](name) для [звонка](event_name) [после 17:00](date) [сегодня](date)?
+      - Проверь [мою](name) занятость на [вторник, 10 утра](date)
+
+      # --- Календарь другого сотрудника ---
       - Проверь занятость [Александра](name) на [завтра](date)
       - Свободен ли [Михаил](name) [10 июня в 3 часа дня](date)?
-      - Календарь [Ольги](name)
-      - Занятость переговорки [Альфа](room_name) на [вторник](date)
-      - Когда [Мария](name) будет в офисе?
-      - Кто доступен для встречи [в среду после обеда](date)?
+      - Календарь [Ольги](name) на [следующую неделю](date)
+      - Покажи расписание [Ивана Петрова](name) на [20 мая](date)
+      - Какие [встречи](event_name) у [Марии Сидоровой](name) [сегодня](date)?
+      - Есть ли [свободные слоты](slot_type_placeholder) у [Алексея](name) для [часовой](date) [встречи](event_name) [завтра](date)?
+      - Занят ли [директор](name) [в среду после обеда](date)?
+      - Покажи календарь [команды разработки](department_placeholder) на [эту пятницу](date) (department_placeholder - не сущность)
+
+      # --- Общие запросы на расписание/слоты (без указания конкретного лица, может подразумеваться "мой") ---
+      - Покажи расписание на [20 мая](date)
+      - Свободные переговорки [завтра утром](date)
+      - Есть ли [свободные окна](slot_type_placeholder) на [этой неделе](date)?
+      - Расписание [конференц-зала Альфа](room_name) на [сегодня](date)
+      - Какие [занятые часы](slot_type_placeholder) в [переговорке Омега](room_name) [завтра](date)?
+
+      # --- Запросы с указанием типа события ---
+      - Какие [совещания](event_name) у [меня](name) [завтра](date)?
+      - Все [один-на-один встречи](event_name) в [моем](name) календаре на [этой неделе](date)
+      - Запланированы ли [командные синки](event_name) у [Петрова](name) [в понедельник](date)?
+      - Покажи только [внешние встречи](event_name) в [моем](name) календаре
+      - Есть ли [демо](event_name) у [команды проекта Х](project) [на этой неделе](date)?
+
+      # --- Запросы с указанием ресурсов ---
+      - Занятость [переговорки Альфа](room_name) на [вторник](date)
+      - Какие [конференц-залы](room_name) свободны [завтра в 10](date)?
+      - Зарезервирована ли [переговорка Солнечная](room_name) на [пятницу после обеда](date) [мной](name)?
+      - Покажи бронирования [комнаты для видеоконференций](room_name)
+
+      # --- Комбинированные и сложные запросы ---
+      - Найди [свободное время](slot_type_placeholder) для [часовой](date) [встречи](event_name) с [Иваном](name) в [моём](name) календаре на [следующей неделе](date)
+      - Какие [утренние совещания (до 10:00)](date) у [отдела маркетинга](department_placeholder) запланированы на [эту неделю](date)?
+      - Свободен ли [Петров](name) для [короткого звонка (15 минут)](date) [завтра после 16:00](date)?
+      - Покажи [мой](name) календарь и [календарь Ольги](name) на [среду](date), чтобы найти [общее свободное время](slot_type_placeholder)
+      - Какие [конференц-залы](room_name) свободны для [трехчасового](date) [семинара](event_name) [в пятницу](date)?
+      - Проверь, нет ли у [меня](name) [конфликтов](conflict_placeholder) со [встречей по проекту Альфа](event_name) [завтра в 11](date)
 
 ================================================================================
 
@@ -2532,7 +3050,6 @@ nlu:
 
   - intent: search_event
     examples: |
-      # --- Базовые запросы на поиск ---
       - Какие мероприятия [завтра](date)?
       - Какие мероприятия запланированы на [сегодня](date)?
       - Что у нас по [корпоративам](event_category)?
@@ -2551,6 +3068,16 @@ nlu:
       - Мероприятия на [ближайшую неделю](date)
       - Что будет [послезавтра](date)?
       - Есть ли какие-нибудь [лекции](event_category) [в этом квартале](date)?
+      - Расскажи про [митапы](event_category) [в этом месяце](date)
+      - А что по [вебинарам](event_category) на [завтра](date)?
+      - Есть планы на [корпоративные выезды](event_category) [летом](date)?
+      - Ищу [событие](event_name) "[Большая встреча](event_name)"
+      - Что известно о [хакатоне](event_name) [в сентябре](date)?
+      - Какие [собрания](event_category) на [этой неделе](date)?
+      - Покажи [календарь ивентов](event_name)
+      - Ивенты [на сегодня](date)
+      - Будут ли [мастер-классы](event_category) [в ближайшее время](date)?
+      - Какие [семинары](event_category) планируются [в августе](date)?
 
       # --- Поиск с фильтрацией по отделу ---
       - Есть ли [в этом месяце](date) [тимбилдинг](event_category) для [отдела IT](department)?
@@ -2558,6 +3085,11 @@ nlu:
       - Мероприятия для [отдела продаж](department) на [следующей неделе](date)
       - Планируется ли [корпоратив](event_category) для [разработчиков](department)?
       - События для [HR департамента](department)
+      - Что есть для [финансистов](department) [в этом квартале](date)?
+      - [Встречи](event_category) для [команды аналитиков](department) [в пятницу](date)
+      - Какие [образовательные мероприятия](event_category) для [новичков](department) у нас есть? (новичков - может быть ролью или спецификой отдела)
+      - [Хакатон](event_name) для [инженеров](department) будет?
+      - [Корпоративный пикник](event_name) для [всех отделов](department)
 
       # --- Поиск с указанием места ---
       - Где и когда пройдёт [корпоративный пикник](event_name)?
@@ -2566,6 +3098,13 @@ nlu:
       - [Конференция по маркетингу](event_name) будет проходить [в главном зале](location)?
       - Найди [события](event_name) в [офисе на Лесной](location)
       - Какие [вебинары](event_category) пройдут [онлайн](location)?
+      - [Тимбилдинг](event_name) на [базе отдыха Солнечная](location) когда?
+      - Планируются ли [офлайн](location) [встречи](event_category) [в этом месяце](date)?
+      - [Тренинг по продажам](event_name) в [конференц-зале №3](location)
+      - Ищу [мероприятия](event_name) [в Санкт-Петербурге](location)
+      - Что будет [в Zoom](location) [завтра вечером](date)?
+      - [Лекция по ИИ](event_name) [в аудитории 101](location)
+      - События [вне офиса](location)
 
       # --- Поиск по организатору ---
       - Когда будет следующий [хакатон](event_name) и кто его организует?
@@ -2573,6 +3112,11 @@ nlu:
       - Что планирует [Иван Петров](organizer) на [следующий месяц](date)?
       - [Встреча с CEO](event_name), кто [организатор](organizer)?
       - Какой [тренинг](event_category) проводит [компания "Эксперты"](organizer)?
+      - [Вебинар](event_name) от [Марии Сидоровой](organizer)
+      - Кто отвечает за [новогодний корпоратив](event_name)?
+      - Мероприятия от [профсоюза](organizer)
+      - [Обучающий курс](event_name) от [внешнего подрядчика "SkillUp"](organizer)
+      - Чей [семинар по Agile](event_name) будет [в среду](date)?
 
       # --- Поиск по категории/типу ---
       - Найди [внутрикорпоративное мероприятие, связанное с благотворительностью](event_category).
@@ -2581,6 +3125,11 @@ nlu:
       - Ищу [образовательные](event_category) [семинары](event_name)
       - Какие [развлекательные](event_category) события намечаются?
       - Покажи [благотворительные акции](event_category)
+      - Что из [обучающих курсов](event_category) есть [в этом месяце](date)?
+      - Интересуют [неформальные встречи](event_category)
+      - Есть ли какие-нибудь [технические митапы](event_category)?
+      - Покажи [все воркшопы](event_category)
+      - Ищу [стратегическую сессию](event_category)
 
       # --- Запросы, подразумевающие создание/добавление/управление (NLU извлекает данные, бэк решает) ---
       - Добавь меня в список участников встречи "[Общая планёрка](event_name)" [25 мая](date).
@@ -2595,34 +3144,219 @@ nlu:
       - Перенеси [совещание](event_name) с [понедельника](date) на [среду](date).
       - Кто идет на [корпоратив](event_name) [в субботу](date)?
       - Покажи участников [встречи по бюджету](event_name).
+      - Создай событие: [обсуждение нового дизайна](event_name), [дата](date): [15 июля](date), [место](location): [переговорка Солнце](location).
+      - Можно ли записаться на [курс по Python](event_name)?
+      - Добавь [Александра Иванова](name) на [тимбилдинг](event_name) [10-го числа](date).
+      - Забронируй [конференц-зал](location) для [презентации продукта](event_name) на [следующий понедельник](date) [с 14 до 16](date).
+      - Создай напоминалку про [созвон с клиентом](event_name) на [завтра в 11](date).
+      - Отмени мою регистрацию на "[Воркшоп по Figma](event_name)".
+      - Измени время [встречи "Еженедельный синк"](event_name) на [15:00](date).
+      - Пригласи [команду разработки](department) на [демо нового функционала](event_name) [в четверг](date).
 
-      # --- Сложные запросы ---
+      # --- Сложные запросы с несколькими сущностями ---
       - Какие [тренинги](event_category) по [продажам](event_name) от [Ивана Иванова](organizer) будут [в Москве](location) [в следующем месяце](date)?
       - Найди [онлайн](event_category) [конференцию](event_name) по [маркетингу](department) на [этой неделе](date).
       - Запланируй [тимбилдинг](event_category) для [IT-отдела](department) на [природе](location) [в конце июня](date).
       - Хочу пойти на [мастер-класс по Python](event_name), который проводит [Алексей Смирнов](organizer), [15 числа](date) [онлайн](location).
       - Какие [благотворительные](event_category) мероприятия запланировал [отдел HR](organizer) на [осень](date)?
+      - Есть ли [технические воркшопы](event_category) от [компании TechGuru](organizer) для [разработчиков](department) [летом](date) [в нашем офисе](location)?
+      - Покажи [все спортивные мероприятия](event_category), организованные [Алексеем Петровым](organizer), которые пройдут [в июле](date) [на стадионе](location).
+      - Ищу [обучающий курс](event_category) "[Основы дизайна](event_name)" от [школы SkillFactory](organizer), который начнется [в сентябре](date) и будет проходить [онлайн](location).
+      - [Встреча](event_category) по [обсуждению KPI](event_name) для [отдела продаж](department) [завтра](date) [в 10:00](date) [в переговорке Запад](location), организатор [Мария Кузнецова](organizer).
+      - Какие [неформальные встречи](event_category) [после работы](date) организует [кто-нибудь из команды маркетинга](organizer) [в баре "У друзей"](location)?
 
-  - intent: find_birthday
+      # --- Запросы с неполной информацией или общими словами ---
+      - Что у нас по мероприятиям [в ближайшие дни](date)?
+      - Какие-нибудь [интересные события](event_name) намечаются?
+      - Есть что-то [полезное для разработчиков](department) [в этом месяце](date)?
+      - Расскажи про [ближайшие ивенты](event_name).
+      - Что там с [корпоративом](event_name)?
+      - Планы на [эту неделю](date) по [обучению](event_category)?
+      - Какие-нибудь [собрания](event_category) [завтра](date)?
+      - Есть ли что-то [для всех сотрудников](department) [в пятницу](date)?
+      - Какие [внутренние мероприятия](event_category) вообще бывают?
+      - Что-нибудь [по тимбилдингу](event_category) для [нашего отдела](department)?
+
+      # --- Вопросы о деталях мероприятий (NLU ловит интент и сущности, бэк ищет детали) ---
+      - Кто будет вести [тренинг по переговорам](event_name) [в следующий понедельник](date)?
+      - Сколько стоит участие в [конференции "TechLead Conf"](event_name)? (сущность "цена" не выделяется, но интент важен)
+      - Какая программа у [летнего корпоратива](event_name)?
+      - Где будет проходить [встреча выпускников курса](event_name)?
+      - Нужна ли регистрация на [вебинар по кибербезопасности](event_name)?
+      - Дресс-код на [новогодний бал](event_name) какой?
+      - Кто из [коллег из IT](department) идет на [митап по Java](event_name)?
+      - Будет ли запись [онлайн-лекции](event_category) по [Data Science](event_name)?
+
+
+  - intent: find_birthday # Общий поиск ДР или поиск ДР как основная цель
     examples: |
-      - У кого день рождения [в этом месяце](date)?
+      # --- Базовые запросы по дате/периоду ---
+      - У кого день рождения [в этом месяце](birthday_specifier)?
+      - Дни рождения [в июне](birthday_specifier)
+      - Покажи список именинников на [сегодня](birthday_specifier)
+      - Чьи дни рождения [на этой неделе](birthday_specifier)?
+      - Кто отмечает ДР [завтра](birthday_specifier)?
+      - Есть ли в календаре дня рождения коллег в [мае](birthday_specifier)?
+      - Найди дни рождения [сегодня](birthday_specifier)
+      - Покажи дни рождения [этой недели](birthday_specifier)
+      - Какие дни рождения [в этом месяце](birthday_specifier)?
+      - Найди коллег, у которых день рождения [зимой](birthday_specifier)
+      - Найди дни рождения в [следующем квартале](birthday_specifier)
+      - Какие у нас [ближайшие](birthday_specifier) дни рождения?
+      - Найди дни рождения, совпадающие с [выходными](birthday_specifier)
+      - Найди сотрудников с днем рождения в [понедельник](birthday_specifier)
+      - Найди дни рождения [в этом году в сентябре](birthday_specifier)
+      - Кто празднует день рождения [на следующей неделе](birthday_specifier)?
+      - Именинники [текущего месяца](birthday_specifier)
+      - Покажи всех, кто родился [в марте](birthday_specifier)
+      - Дни рождения [в первой половине года](birthday_specifier)
+      - Дни рождения [во втором квартале](birthday_specifier)
+      - Покажи, кто отмечает день рождения [в ближайший месяц](birthday_specifier)
+      - Список дней рождений на [август](birthday_specifier)
+      - Кто родился [летом](birthday_specifier)?
+      - Посмотреть дни рождения [сотрудников](name) [на сегодня](birthday_specifier)
+      - Дни рождения [в октябре](birthday_specifier)
+      - Ищу [всех](name), у кого день рождения [в ноябре](birthday_specifier)
+      - Напомни о днях рождения [на завтра](birthday_specifier)
+      - Покажи календарь дней рождений на [этот квартал](birthday_specifier)
+      - Отфильтруй дни рождения по [декабрю](birthday_specifier)
+      - ДР [на сегодня](birthday_specifier)
+      - ДР [на этой неделе](birthday_specifier)
+      - ДР [в этом месяце](birthday_specifier)
+      - ДР [в следующем месяце](birthday_specifier)
+
+      # --- Запросы с именем ---
       - Когда ДР у [Ивана Петрова](name)?
-      - Дни рождения [в июне](date)
-      - Покажи список именинников на [сегодня](date)
-      - У [Анны](name) скоро день рождения?
-      - Чьи дни рождения [на этой неделе](date)?
-      - Кто отмечает ДР [завтра](date)?
-      - Есть ли в календаре дня рождения коллег в [мае](date)?
+      - У [Анны](name) [скоро](birthday_specifier) день рождения?
+      - День рождения [Сергея Кузнецова](name)
+      - Когда отмечает день рождения [Мария Волкова](name)?
+      - Подскажи дату рождения [Алексея Смирнова](name)
+
+      # --- Запросы с отделом ---
+      - Какие дни рождения в [отделе маркетинга](department) в [мае](birthday_specifier)?
+      - У кого из [сотрудников](name) [отдела кадров](department) день рождения [в июне](birthday_specifier)?
+      - Есть ли у кого-то ДР [на следующей неделе](birthday_specifier) в [IT отделе](department)?
+      - Дни рождения [в октябре](birthday_specifier) для [отдела аналитики](department)
+      - Кто из [отдела продаж](department) именинник [в этом месяце](birthday_specifier)?
+      - Именинники [отдела разработки](department) [на этой неделе](birthday_specifier)
+
+      # --- Запросы с проектом ---
+      - Мне нужны дни рождения [в этом месяце](birthday_specifier) для [проектной команды Альфа](project)
+      - Дни рождения [сотрудников](name) [проекта Омега](project) [в текущем месяце](birthday_specifier)
+      - Кто из [проекта Гамма](project) отмечает день рождения [зимой](birthday_specifier)?
+
+      # --- Запросы с возрастом ---
+      - Покажи дни рождения сотрудников старше [30](age_older_than) лет [в этом месяце](birthday_specifier)
+      - Дни рождения сотрудников младше [25](age_younger_than) лет [на этой неделе](birthday_specifier)
+      - Есть ли именинники [на этой неделе](birthday_specifier) среди тех, кому больше [40](age_older_than)?
+      - Кто из тех, кто младше [30](age_younger_than) лет, празднует ДР [в июле](birthday_specifier)?
+
+      # --- Комбинированные запросы ---
+      - У кого из [отдела маркетинга](department) день рождения [в июне](birthday_specifier) и они старше [28](age_older_than) лет?
+      - Дни рождения [на этой неделе](birthday_specifier) в [IT отделе](department) для сотрудников младше [35](age_younger_than) лет
+      - Именинники [проекта Зенит](project) из [отдела разработка](department), родившиеся [весной](birthday_specifier)
+      - Покажи дни рождения [в этом месяце](birthday_specifier) для [отдела продаж](department), кто старше [30](age_older_than) лет
+      - Дни рождения [в следующем месяце](birthday_specifier) для [сотрудников](name) из [HR](department) в проекте [Найм](project)
+
+      # --- Запросы с "неизвестными" категориями (модель попытается их отнести к birthday_specifier или они будут в тексте) ---
+      - Покажи дни рождения [всех менеджеров проектов](job_title_placeholder) [в этом квартале](birthday_specifier)
+      - Какие дни рождения в [июле](birthday_specifier) у [удалённых сотрудников](status_placeholder)?
+      - Когда празднует день рождения [руководитель отдела маркетинга](job_title_placeholder)?
+  
 
   - intent: check_task
     examples: |
-      - Какие у меня задачи по проекту [Гамма](project)?
-      - Что с задачей [подготовить отчет](task_name)?
-      - Проверь статус задачи [релиз новой версии](task_name) на [эту пятницу](date)
-      - Мои задачи на [сегодня](date)
+      # --- Задачи пользователя ("мои") ---
+      - Найди [мои](name) задачи на [сегодня](date)
+      - Какие у [меня](name) задачи по проекту [Гамма](project)?
+      - Что у [меня](name) с задачей [подготовить отчет](task_name)?
+      - [Мои](name) задачи на [сегодня](date)
+      - Покажи [мои](name) [невыполненные](task_status) задачи
+      - [Мои](name) [просроченные](task_status) задачи
+      - Какие задачи у [меня](name) в статусе "[в процессе](task_status)"?
+      - Покажи [мои](name) напоминания на [завтра](date)
+      - [Мои](name) задачи с [высоким приоритетом](task_priority)
+      - [Мои](name) задачи с тегом "[срочно](task_tag)"
+      - Какие у [меня](name) задачи [без дедлайна](date)?
+      - [Мои](name) [завершенные](task_status) задачи за [сегодня](date)
+      - Список [моих](name) задач на [эту неделю](date)
+      - Задачи, где [я](name) [участник](task_role_placeholder) (task_role_placeholder - не сущность, бэк анализирует текст)
+      - Какие [мои](name) задачи [требуют согласования](task_status)?
+      - [Мои](name) задачи, созданные [в прошлом месяце](date)
+
+      # --- Задачи конкретного сотрудника ---
       - Какие задачи у [Сергея](name) по проекту [Феникс](project)?
+      - Покажи задачи, назначенные на [Петрова](name)
+      - Задачи [Ивана Сидорова](name) на [следующую неделю](date)
+      - Что должна сделать [Анна](name) [сегодня](date)?
+      - [Невыполненные](task_status) задачи [Ольги](name)
+      - Задачи [Михаила](name) с [низким приоритетом](task_priority)
+      - Какие задачи у [Алексея](name) в проекте [Альфа](project) [просрочены](task_status)?
+
+      # --- Задачи по проекту ---
       - Задачи по [проекту Омега](project)
-      - Что там с [отчетом для клиента](task_name)?
+      - Какие задачи в проекте [Заря](project) имеют статус "[на проверке](task_status)"?
+      - Список задач для [проекта Восход](project) с дедлайном [в этом месяце](date)
+      - [Открытые](task_status) задачи по [проекту Интеграция](project)
+      - Задачи с [высоким приоритетом](task_priority) в [проекте Релиз](project)
+
+      # --- Фильтрация по дедлайну/дате ---
+      - Покажи задачи с дедлайном на [этот месяц](date)
+      - Какие задачи [просрочены](task_status)?
+      - Задачи на [следующую неделю](date)
+      - Найди задачи, созданные [в прошлом месяце](date)
+      - Какие задачи [без дедлайна](date)?
+      - Задачи с крайним сроком [завтра](date)
+      - Что нужно сделать до [конца недели](date)?
+      - Задачи, которые должны быть выполнены [к пятнице](date)
+      - Покажи задачи с дедлайном [в следующем квартале](date)
+
+      # --- Фильтрация по статусу ---
+      - Какие у меня [невыполненные](task_status) задачи по проекту [Alpha](project)?
+      - Какие задачи в статусе "[в процессе](task_status)"?
+      - Покажи все [завершённые](task_status) задачи за [сегодня](date)
+      - Найди задачи, [требующие согласования](task_status) [менеджера](name)
+      - Задачи со статусом "[отложено](task_status)"
+      - Покажи [открытые](task_status) задачи
+      - Список [новых](task_status) задач
+      - Какие задачи [заблокированы](task_status)?
+      - Задачи [на тестировании](task_status)
+
+      # --- Фильтрация по приоритету ---
+      - Найди задачи с [высоким приоритетом](task_priority)
+      - Задачи с [низким приоритетом](task_priority) на [этой неделе](date)
+      - Покажи [критичные](task_priority) задачи
+      - Задачи [среднего приоритета](task_priority) по проекту [Бета](project)
+
+      # --- Фильтрация по тегу ---
+      - Найди задачи с тегом "[отчет](task_tag)"
+      - Задачи, помеченные как "[дизайн](task_tag)"
+      - Покажи все задачи с меткой "[bug](task_tag)"
+      - Задачи с тегом "[важно](task_tag)" и "[срочно](task_tag)"
+      - Какие задачи имеют тег "[клиентский запрос](task_tag)"?
+
+      # --- Напоминания (как тип задач) ---
+      - Покажи мои напоминания на [завтра](date)
+      - Какие у [меня](name) напоминания [на сегодня](date)?
+      - Напомни [мне](name) о задаче [сделать отчет](task_name) [завтра утром](date)
+      - Установи напоминание по задаче [проверить почту](task_name) на [15:00](date)
+
+      # --- Комбинированные запросы ---
+      - [Мои](name) [невыполненные](task_status) задачи по проекту [Гамма](project) с [высоким приоритетом](task_priority)
+      - Задачи [Петрова](name) в проекте [Альфа](project) с дедлайном на [эту неделю](date) и статусом "[в процессе](task_status)"
+      - Покажи [просроченные](task_status) задачи с тегом "[клиент](task_tag)"
+      - [Завершенные](task_status) задачи [Ивановой](name) по проекту [Омега](project) за [прошлый месяц](date)
+      - Найди [мои](name) задачи с [низким приоритетом](task_priority), тегом "[документация](task_tag)" и дедлайном [в следующем месяце](date)
+      - Какие задачи [требуют согласования](task_status) [менеджером](name) в проекте [Бюджет](project) на [этой неделе](date)?
+      - [Мои](name) задачи по проекту [Веб-сайт](project) со статусом "[открыта](task_status)" и без дедлайна
+      - Задачи с тегом "[маркетинг](task_tag)" и "[реклама](task_tag)" для [отдела маркетинга](department_placeholder) на [этот квартал](date) (department_placeholder - не сущность)
+
+      # --- Уточняющие запросы / запросы о конкретной задаче ---
+      - Что с задачей [подготовить отчет для клиента](task_name)?
+      - Проверь статус задачи [релиз новой версии](task_name) на [эту пятницу](date)
+      - Детали по задаче "[Написать ТЗ](task_name)"
+      - Кто ответственный за задачу "[Исправить баг #123](task_name)"?
+      - Какой дедлайн у задачи "[Разработать модуль Х](task_name)"?
 
   - intent: check_employment_calendar
     examples: |
@@ -2741,6 +3475,88 @@ stories:
     - department: "IT отдел"
     - date: "в этом месяце"
   - action: action_process_request
+
+- story: поиск дней рождения в этом месяце
+  steps:
+  - intent: find_birthday
+    entities:
+    - birthday_specifier: "в этом месяце"
+  - action: action_process_request
+
+- story: поиск дней рождения в отделе маркетинга в мае
+  steps:
+  - intent: find_birthday
+    entities:
+    - department: "отделе маркетинга"
+    - birthday_specifier: "в мае"
+  - action: action_process_request
+
+- story: поиск дней рождения сотрудников старше 30
+  steps:
+  - intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в этом году" # Добавляем общий спецификатор, если не указан явно
+  - action: action_process_request
+
+  - story: поиск дней рождения сотрудников старше 30
+    steps:
+      - intent: find_birthday
+        entities:
+          - age_older_than: "30"
+          - birthday_specifier: "в этом году"
+      - action: action_process_request
+
+  - story: проверить мои задачи на сегодня
+    steps:
+      - intent: check_task
+        entities:
+          - name: "мои"
+          - date: "сегодня"
+      - action: action_process_request
+
+  - story: проверить невыполненные задачи Петрова по проекту Альфа
+    steps:
+      - intent: check_task
+        entities:
+          - name: "Петрова"
+          - task_status: "невыполненные"
+          - project: "Альфа"
+      - action: action_process_request
+
+  - story: проверить задачи с высоким приоритетом и тегом отчет
+    steps:
+      - intent: check_task
+        entities:
+          - task_priority: "высоким"
+          - task_tag: "отчет"
+      - action: action_process_request
+
+
+  - story: проверить мой календарь на сегодня
+    steps:
+      - intent: check_employment_calendar
+        entities:
+          - name: "мой"
+          - date: "сегодня"
+      - action: action_process_request
+
+  - story: найти свободные слоты у Петрова на неделе
+    steps:
+      - intent: check_employment_calendar
+        entities:
+          - name: "Петрова" # или Петров
+          - date: "на этой неделе"
+      - action: action_process_request # Бэкенд будет искать "свободные слоты" по ключевым словам в тексте
+
+  - story: проверить совещания с участием Иванова в моем календаре
+    steps:
+      - intent: check_employment_calendar
+        entities:
+          - name: "моём" # или мой
+          - name: "Иванова" # или Иванов
+          - event_name: "совещания"
+      - action: action_process_request
 
 ================================================================================
 
@@ -2895,7 +3711,7 @@ stories:
       Какие мероприятия завтра?
     intent: search_event
     entities:
-    - date: "завтра"
+    - date: "завтра" # или birthday_specifier если будет размечено так
   - action: action_process_request
 
 - story: search event with category and location
@@ -2905,7 +3721,7 @@ stories:
     entities:
     - event_category: "тренинги"
     - location: "онлайн"
-    - date: "на следующей неделе"
+    - date: "на следующей неделе" # или birthday_specifier
   - action: action_process_request
 
 - story: create event (via search_event intent)
@@ -2914,7 +3730,7 @@ stories:
     intent: search_event
     entities:
     - event_name: "митинг по проекту Гамма"
-    - date: "завтра в 10"
+    - date: "завтра в 10" # или birthday_specifier
   - action: action_process_request
 
 - story: search event for department
@@ -2924,8 +3740,110 @@ stories:
     entities:
     - event_category: "тимбилдинг"
     - department: "HR"
-    - date: "в этом месяце"
+    - date: "в этом месяце" # или birthday_specifier
   - action: action_process_request
+
+- story: find birthdays this week
+  steps:
+  - user: "Покажи дни рождения этой недели"
+    intent: find_birthday
+    entities:
+    - birthday_specifier: "этой недели"
+  - action: action_process_request
+
+- story: find birthdays in marketing in May
+  steps:
+  - user: "Какие дни рождения в отделе маркетинга в мае?"
+    intent: find_birthday
+    entities:
+    - department: "отделе маркетинга"
+    - birthday_specifier: "в мае"
+  - action: action_process_request
+
+- story: find birthdays for employees older than 30 in June
+  steps:
+  - user: "Дни рождения сотрудников старше 30 лет в июне"
+    intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в июне"
+  - action: action_process_request
+
+- story: find birthdays for employees older than 30 in June
+  steps:
+  - user: "Дни рождения сотрудников старше 30 лет в июне"
+    intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в июне"
+  - action: action_process_request
+
+- story: check my tasks for today
+  steps:
+  - user: "Какие у меня задачи на сегодня?"
+    intent: check_task
+    entities:
+    - name: "меня"
+    - date: "сегодня"
+  - action: action_process_request
+
+- story: check overdue tasks for project Gamma
+  steps:
+  - user: "Покажи просроченные задачи по проекту Гамма"
+    intent: check_task
+    entities:
+    - task_status: "просроченные"
+    - project: "Гамма"
+  - action: action_process_request
+
+- story: check tasks for Petrova with high priority
+  steps:
+  - user: "Задачи Петровой с высоким приоритетом"
+    intent: check_task
+    entities:
+    - name: "Петровой"
+    - task_priority: "высоким"
+  - action: action_process_request
+
+- story: check my calendar for today
+  steps:
+  - user: "Покажи мой календарь на сегодня"
+    intent: check_employment_calendar
+    entities:
+    - name: "мой"
+    - date: "сегодня"
+  - action: action_process_request
+
+- story: find free slots in my calendar this week
+  steps:
+  - user: "Найди свободные слоты в моём календаре на этой неделе"
+    intent: check_employment_calendar
+    entities:
+    - name: "моём" # или мой
+    - date: "на этой неделе"
+  - action: action_process_request
+
+- story: check meetings with Petrov in my calendar
+  steps:
+  - user: "Какие совещания с Петровым в моём календаре завтра?"
+    intent: check_employment_calendar
+    entities:
+    - name: "Петровым" # или Петров
+    - name: "моём" # или мой
+    - event_name: "совещания"
+    - date: "завтра"
+  - action: action_process_request
+
+- story: find free time for two-hour meeting
+  steps:
+  - user: "Найди свободное время для двухчасовой встречи в моем календаре"
+    intent: check_employment_calendar
+    entities:
+    - date: "двухчасовой" # Duckling может извлечь это как duration
+    - name: "моем"
+    - event_name: "встречи"
+  - action: action_process_request
+
 
 ================================================================================
 
@@ -2941,27 +3859,119 @@ stories:
   - user: |
       Найди Виктора из отдела разработки
     intent: search_person
-  - action: action_process_request # Убедитесь, что это ваше актуальное действие
-  # Можно добавить ассерты на извлеченные слоты, если они заполняются
-  # - slot_was_set:
-  #   - name: "Виктор"
-  #   - department: "разработки"
+    entities:
+    - name: "Виктора"
+    - department: "отдела разработки"
+  - action: action_process_request
 
 - story: search person directly
   steps:
   - user: |
       Контакты Ивана Сидорова
     intent: search_person
+    entities:
+    - name: "Ивана Сидорова"
   - action: action_process_request
 
-- story: search event
+- story: search event basic
   steps:
   - user: |
       Какие мероприятия завтра?
     intent: search_event
+    entities:
+    - date: "завтра" # или birthday_specifier если будет размечено так
   - action: action_process_request
 
-# ... и так далее для других интентов
+- story: search event with category and location
+  steps:
+  - user: "Какие тренинги онлайн на следующей неделе?"
+    intent: search_event
+    entities:
+    - event_category: "тренинги"
+    - location: "онлайн"
+    - date: "на следующей неделе" # или birthday_specifier
+  - action: action_process_request
+
+- story: create event (via search_event intent)
+  steps:
+  - user: "Создай митинг по проекту Гамма на завтра в 10"
+    intent: search_event
+    entities:
+    - event_name: "митинг по проекту Гамма"
+    - date: "завтра в 10" # или birthday_specifier
+  - action: action_process_request
+
+- story: search event for department
+  steps:
+  - user: "Есть тимбилдинг для HR в этом месяце?"
+    intent: search_event
+    entities:
+    - event_category: "тимбилдинг"
+    - department: "HR"
+    - date: "в этом месяце" # или birthday_specifier
+  - action: action_process_request
+
+- story: find birthdays this week
+  steps:
+  - user: "Покажи дни рождения этой недели"
+    intent: find_birthday
+    entities:
+    - birthday_specifier: "этой недели"
+  - action: action_process_request
+
+- story: find birthdays in marketing in May
+  steps:
+  - user: "Какие дни рождения в отделе маркетинга в мае?"
+    intent: find_birthday
+    entities:
+    - department: "отделе маркетинга"
+    - birthday_specifier: "в мае"
+  - action: action_process_request
+
+- story: find birthdays for employees older than 30 in June
+  steps:
+  - user: "Дни рождения сотрудников старше 30 лет в июне"
+    intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в июне"
+  - action: action_process_request
+
+- story: find birthdays for employees older than 30 in June
+  steps:
+  - user: "Дни рождения сотрудников старше 30 лет в июне"
+    intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в июне"
+  - action: action_process_request
+
+- story: check my tasks for today
+  steps:
+  - user: "Какие у меня задачи на сегодня?"
+    intent: check_task
+    entities:
+    - name: "меня"
+    - date: "сегодня"
+  - action: action_process_request
+
+- story: check overdue tasks for project Gamma
+  steps:
+  - user: "Покажи просроченные задачи по проекту Гамма"
+    intent: check_task
+    entities:
+    - task_status: "просроченные"
+    - project: "Гамма"
+  - action: action_process_request
+
+- story: check tasks for Petrova with high priority
+  steps:
+  - user: "Задачи Петровой с высоким приоритетом"
+    intent: check_task
+    entities:
+    - name: "Петровой"
+    - task_priority: "высоким"
+  - action: action_process_request
 
 ================================================================================
 

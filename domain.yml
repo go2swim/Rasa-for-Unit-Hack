@@ -36,26 +36,24 @@ intents:
   - check_task:
       use_entities:
         - task_name
-        - name
+        - name # Исполнитель ("мои", "Петрова")
         - project
-        - date
-        - task_status
-        - task_priority
-        - task_tag
-  - check_employment_calendar: # Проверка календаря занятости
+        - date # Дедлайн, дата создания, период
+        - task_status # "невыполненные", "в процессе", "завершенные", "просрочены"
+        - task_priority # "высокий", "низкий"
+        - task_tag # "отчет", "дизайн"
+  - check_employment_calendar:
       use_entities:
         - name # Чей календарь ("мой", "Петрова")
-        - date # Период, дата, время ("сегодня", "завтра", "на этой неделе", "20 мая", "до 12:00")
+        - date # Период, дата, время, длительность
         - room_name # Зарезервированные переговорки
-        - event_name # Тип события для фильтрации ("встречи", "совещания")
-        # duration - можно пробовать извлекать как часть date или бэкенд будет парсить из текста
-        # slot_type - (свободные/занятые) - определяется контекстом запроса и ключевыми словами
+        - event_name # Тип события ("встречи", "совещания", "обед")
 
 entities:
   - name
   - department
   - project
-  - event_name # Может использоваться и в check_employment_calendar для типа события
+  - event_name
   - date
   - task_name
   - age_exact
@@ -64,13 +62,12 @@ entities:
   - birthday_specifier
   - skill
   - location
-  - event_category # Может использоваться и в check_employment_calendar для типа события
+  - event_category
   - organizer
   - room_name
   - task_status
   - task_priority
   - task_tag
-  # Новые сущности пока не добавляем, пробуем обойтись существующими и контекстом
 
 slots:
   name:
@@ -91,7 +88,7 @@ slots:
     mappings:
       - type: from_entity
         entity: project
-  event_name: # Существующий слот, будет использоваться шире
+  event_name:
     type: text
     influence_conversation: false
     mappings:
@@ -145,7 +142,7 @@ slots:
     mappings:
       - type: from_entity
         entity: location
-  event_category: # Существующий слот, может использоваться шире
+  event_category:
     type: text
     influence_conversation: false
     mappings:
@@ -191,17 +188,14 @@ responses:
     - text: "Я AI-ассистент."
   utter_ask_details_person:
     - text: "Можете уточнить имя, фамилию, отдел, проект, навыки, возраст или информацию о дне рождения сотрудника?"
-    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали, включая навыки, возраст или день рождения."
   utter_ask_details_event:
     - text: "Какое мероприятие, категорию, дату или место проведения вы ищете?"
-    - text: "Уточните название мероприятия, его тип, дату, место или кто организатор?"
   utter_ask_details_birthday:
     - text: "Чьи дни рождения вас интересуют? Можно уточнить период, отдел, проект или возраст."
   utter_ask_details_task:
-    - text: "Уточните название задачи, проекта, исполнителя, статус, приоритет, тег или дату."
-    - text: "Какие задачи вы ищете? Можно указать проект, исполнителя, дедлайн, статус, приоритет или метку."
+    - text: "Уточните детали задач: исполнителя, проект, дату, статус, приоритет или тег."
   utter_ask_details_calendar:
-    - text: "Чей календарь и на какой период вас интересует? Можно уточнить тип события или длительность."
+    - text: "Чей календарь и на какой период вас интересует? Можно уточнить тип события, ресурс или длительность."
   utter_processing_request:
     - text: "Понял, обрабатываю ваш запрос..."
 
