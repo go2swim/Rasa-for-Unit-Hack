@@ -85,3 +85,39 @@ stories:
     - age_older_than: "30"
     - birthday_specifier: "в июне"
   - action: action_process_request
+
+- story: find birthdays for employees older than 30 in June
+  steps:
+  - user: "Дни рождения сотрудников старше 30 лет в июне"
+    intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в июне"
+  - action: action_process_request
+
+- story: check my tasks for today
+  steps:
+  - user: "Какие у меня задачи на сегодня?"
+    intent: check_task
+    entities:
+    - name: "меня"
+    - date: "сегодня"
+  - action: action_process_request
+
+- story: check overdue tasks for project Gamma
+  steps:
+  - user: "Покажи просроченные задачи по проекту Гамма"
+    intent: check_task
+    entities:
+    - task_status: "просроченные"
+    - project: "Гамма"
+  - action: action_process_request
+
+- story: check tasks for Petrova with high priority
+  steps:
+  - user: "Задачи Петровой с высоким приоритетом"
+    intent: check_task
+    entities:
+    - name: "Петровой"
+    - task_priority: "высоким"
+  - action: action_process_request

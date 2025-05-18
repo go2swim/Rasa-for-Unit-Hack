@@ -78,3 +78,36 @@ stories:
     - age_older_than: "30"
     - birthday_specifier: "в этом году" # Добавляем общий спецификатор, если не указан явно
   - action: action_process_request
+
+  - story: поиск дней рождения сотрудников старше 30
+    steps:
+      - intent: find_birthday
+        entities:
+          - age_older_than: "30"
+          - birthday_specifier: "в этом году"
+      - action: action_process_request
+
+  - story: проверить мои задачи на сегодня
+    steps:
+      - intent: check_task
+        entities:
+          - name: "мои"
+          - date: "сегодня"
+      - action: action_process_request
+
+  - story: проверить невыполненные задачи Петрова по проекту Альфа
+    steps:
+      - intent: check_task
+        entities:
+          - name: "Петрова"
+          - task_status: "невыполненные"
+          - project: "Альфа"
+      - action: action_process_request
+
+  - story: проверить задачи с высоким приоритетом и тегом отчет
+    steps:
+      - intent: check_task
+        entities:
+          - task_priority: "высоким"
+          - task_tag: "отчет"
+      - action: action_process_request

@@ -10,20 +10,20 @@ intents:
       use_entities:
         - name
         - department
-        - project # Теперь может иметь роль
+        - project
         - age_exact
         - age_older_than
         - age_younger_than
         - birthday_specifier
-        - skill # Новая сущность
+        - skill
   - search_event:
       use_entities:
         - event_name
         - date
-        - location # Новая сущность для событий
-        - event_category # Новая сущность для событий
-        - department # Может использоваться для фильтрации событий по отделу
-        - organizer # Новая сущность для событий
+        - location
+        - event_category
+        - department
+        - organizer
   - find_birthday:
       use_entities:
         - name
@@ -31,18 +31,22 @@ intents:
         - project
         - age_older_than
         - age_younger_than
-        - birthday_specifier # Ключевая сущность для этого интента
-        - date # Может использоваться параллельно или для более точных дат от Duckling
+        - birthday_specifier
+        - date
   - check_task:
       use_entities:
-        - task_name
-        - project
-        - date
+        - task_name # Название конкретной задачи
+        - name # Исполнитель или тот, чьи задачи ищут (например, "мои" или "Петрова")
+        - project # Проект, к которому относится задача
+        - date # Дедлайн, дата создания, период
+        - task_status # Новая сущность: "невыполненные", "в процессе", "завершенные"
+        - task_priority # Новая сущность: "высокий", "низкий"
+        - task_tag # Новая сущность: "отчет", "дизайн"
   - check_employment_calendar:
       use_entities:
         - name
         - date
-        - room_name # Добавлено для согласованности с NLU
+        - room_name
 
 entities:
   - name
@@ -56,10 +60,13 @@ entities:
   - age_younger_than
   - birthday_specifier
   - skill
-  - location # Новая сущность
-  - event_category # Новая сущность
-  - organizer # Новая сущность
-  - room_name # Новая сущность
+  - location
+  - event_category
+  - organizer
+  - room_name
+  - task_status # Новая сущность
+  - task_priority # Новая сущность
+  - task_tag # Новая сущность
 
 slots:
   name:
@@ -92,7 +99,7 @@ slots:
     mappings:
       - type: from_entity
         entity: date
-  task_name:
+  task_name: # Существующий слот
     type: text
     influence_conversation: false
     mappings:
@@ -128,30 +135,48 @@ slots:
     mappings:
       - type: from_entity
         entity: skill
-  location: # Новый слот
+  location:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: location
-  event_category: # Новый слот
+  event_category:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: event_category
-  organizer: # Новый слот
+  organizer:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: organizer
-  room_name: # Новый слот
+  room_name:
     type: text
     influence_conversation: false
     mappings:
       - type: from_entity
         entity: room_name
+  task_status: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_status
+  task_priority: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_priority
+  task_tag: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_tag
 
 responses:
   utter_greet:
@@ -169,7 +194,8 @@ responses:
   utter_ask_details_birthday:
     - text: "Чьи дни рождения вас интересуют? Можно уточнить период, отдел, проект или возраст."
   utter_ask_details_task:
-    - text: "Уточните название задачи, проекта или дату."
+    - text: "Уточните название задачи, проекта, исполнителя, статус, приоритет, тег или дату."
+    - text: "Какие задачи вы ищете? Можно указать проект, исполнителя, дедлайн, статус, приоритет или метку."
   utter_processing_request: # Общий ответ, который может быть использован перед вызовом action
     - text: "Понял, обрабатываю ваш запрос..."
 
