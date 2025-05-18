@@ -24,10 +24,15 @@ intents:
         - event_category # Новая сущность для событий
         - department # Может использоваться для фильтрации событий по отделу
         - organizer # Новая сущность для событий
-  - find_birthday: # Этот интент остается для общего поиска ДР
+  - find_birthday:
       use_entities:
         - name
-        - date
+        - department
+        - project
+        - age_older_than
+        - age_younger_than
+        - birthday_specifier # Ключевая сущность для этого интента
+        - date # Может использоваться параллельно или для более точных дат от Duckling
   - check_task:
       use_entities:
         - task_name
@@ -161,6 +166,8 @@ responses:
   utter_ask_details_event:
     - text: "Какое мероприятие, категорию, дату или место проведения вы ищете?"
     - text: "Уточните название мероприятия, его тип, дату, место или кто организатор?"
+  utter_ask_details_birthday:
+    - text: "Чьи дни рождения вас интересуют? Можно уточнить период, отдел, проект или возраст."
   utter_ask_details_task:
     - text: "Уточните название задачи, проекта или дату."
   utter_processing_request: # Общий ответ, который может быть использован перед вызовом action

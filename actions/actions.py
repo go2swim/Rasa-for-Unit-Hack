@@ -114,6 +114,7 @@ class ActionProcessRequest(Action):
 
         elif intent_name == "search_event":
             event_params = {}
+            # ... (логика для search_event без изменений) ...
             for ent in extracted_data_for_backend["entities"]:
                 if ent["entity"] not in event_params:
                     event_params[ent["entity"]] = ent["value"]
@@ -130,10 +131,10 @@ class ActionProcessRequest(Action):
             if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
             if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
 
-            # Check for action keywords in original text
             action_taken_msg = ""
             if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
                 action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
+            # ... (остальные проверки ключевых слов для search_event) ...
             elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
                 action_taken_msg = "Запрос на добавление участника принят. "
             elif "напомни" in latest_message_text.lower():
@@ -150,15 +151,42 @@ class ActionProcessRequest(Action):
             else:
                 response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
 
-
         elif intent_name == "find_birthday":
-            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
-                               "всех сотрудников")
-            birthday_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
-                                 "не указана")
-            response_message = f"✅ Запрос на поиск дней рождения для '{person_name}' (дата/период: '{birthday_date}') принят."
+            birthday_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in birthday_params:
+                    birthday_params[ent["entity"]] = ent["value"]
+                elif isinstance(birthday_params[ent["entity"]], list):
+                    birthday_params[ent["entity"]].append(ent["value"])
+                else:
+                    birthday_params[ent["entity"]] = [birthday_params[ent["entity"]], ent["value"]]
+
+            if birthday_params.get("name"): details_parts.append(f"Имя/ФИО: '{birthday_params.get('name')}'")
+            if birthday_params.get("birthday_specifier"):
+                details_parts.append(f"Период: '{birthday_params.get('birthday_specifier')}'")
+            elif birthday_params.get("date"):
+                details_parts.append(f"Период: '{birthday_params.get('date')}'")  # Fallback if date was extracted
+            if birthday_params.get("department"): details_parts.append(f"Отдел: '{birthday_params.get('department')}'")
+            if birthday_params.get("project"): details_parts.append(f"Проект: '{birthday_params.get('project')}'")
+            if birthday_params.get("age_older_than"): details_parts.append(
+                f"Старше: '{birthday_params.get('age_older_than')}' лет")
+            if birthday_params.get("age_younger_than"): details_parts.append(
+                f"Младше: '{birthday_params.get('age_younger_than')}' лет")
+
+            # Placeholder for job_title or status if they were part of the text but not extracted as entities
+            if "менеджер" in latest_message_text.lower():  # Simple keyword check
+                details_parts.append(f"Должность (текст): 'менеджер'")
+            if "удалён" in latest_message_text.lower():  # Simple keyword check
+                details_parts.append(f"Статус (текст): 'удалённый'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на поиск дней рождения принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на поиск дней рождения принят (без уточняющих критериев)."
+
 
         elif intent_name == "check_task":
+            # ... (логика для check_task без изменений) ...
             task_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'task_name'),
                              "не указана")
             project_name = next(
@@ -168,6 +196,7 @@ class ActionProcessRequest(Action):
             response_message = f"✅ Запрос на проверку задачи '{task_name}' (проект: '{project_name}', дата: '{task_date}') принят."
 
         elif intent_name == "check_employment_calendar":
+            # ... (логика для check_employment_calendar без изменений) ...
             person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
                                "не указан")
             calendar_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),

@@ -400,16 +400,81 @@ nlu:
       - Будет ли запись [онлайн-лекции](event_category) по [Data Science](event_name)?
 
 
-  - intent: find_birthday
+  - intent: find_birthday # Общий поиск ДР или поиск ДР как основная цель
     examples: |
-      - У кого день рождения [в этом месяце](date)?
+      # --- Базовые запросы по дате/периоду ---
+      - У кого день рождения [в этом месяце](birthday_specifier)?
+      - Дни рождения [в июне](birthday_specifier)
+      - Покажи список именинников на [сегодня](birthday_specifier)
+      - Чьи дни рождения [на этой неделе](birthday_specifier)?
+      - Кто отмечает ДР [завтра](birthday_specifier)?
+      - Есть ли в календаре дня рождения коллег в [мае](birthday_specifier)?
+      - Найди дни рождения [сегодня](birthday_specifier)
+      - Покажи дни рождения [этой недели](birthday_specifier)
+      - Какие дни рождения [в этом месяце](birthday_specifier)?
+      - Найди коллег, у которых день рождения [зимой](birthday_specifier)
+      - Найди дни рождения в [следующем квартале](birthday_specifier)
+      - Какие у нас [ближайшие](birthday_specifier) дни рождения?
+      - Найди дни рождения, совпадающие с [выходными](birthday_specifier)
+      - Найди сотрудников с днем рождения в [понедельник](birthday_specifier)
+      - Найди дни рождения [в этом году в сентябре](birthday_specifier)
+      - Кто празднует день рождения [на следующей неделе](birthday_specifier)?
+      - Именинники [текущего месяца](birthday_specifier)
+      - Покажи всех, кто родился [в марте](birthday_specifier)
+      - Дни рождения [в первой половине года](birthday_specifier)
+      - Дни рождения [во втором квартале](birthday_specifier)
+      - Покажи, кто отмечает день рождения [в ближайший месяц](birthday_specifier)
+      - Список дней рождений на [август](birthday_specifier)
+      - Кто родился [летом](birthday_specifier)?
+      - Посмотреть дни рождения [сотрудников](name) [на сегодня](birthday_specifier)
+      - Дни рождения [в октябре](birthday_specifier)
+      - Ищу [всех](name), у кого день рождения [в ноябре](birthday_specifier)
+      - Напомни о днях рождения [на завтра](birthday_specifier)
+      - Покажи календарь дней рождений на [этот квартал](birthday_specifier)
+      - Отфильтруй дни рождения по [декабрю](birthday_specifier)
+      - ДР [на сегодня](birthday_specifier)
+      - ДР [на этой неделе](birthday_specifier)
+      - ДР [в этом месяце](birthday_specifier)
+      - ДР [в следующем месяце](birthday_specifier)
+
+      # --- Запросы с именем ---
       - Когда ДР у [Ивана Петрова](name)?
-      - Дни рождения [в июне](date)
-      - Покажи список именинников на [сегодня](date)
-      - У [Анны](name) скоро день рождения?
-      - Чьи дни рождения [на этой неделе](date)?
-      - Кто отмечает ДР [завтра](date)?
-      - Есть ли в календаре дня рождения коллег в [мае](date)?
+      - У [Анны](name) [скоро](birthday_specifier) день рождения?
+      - День рождения [Сергея Кузнецова](name)
+      - Когда отмечает день рождения [Мария Волкова](name)?
+      - Подскажи дату рождения [Алексея Смирнова](name)
+
+      # --- Запросы с отделом ---
+      - Какие дни рождения в [отделе маркетинга](department) в [мае](birthday_specifier)?
+      - У кого из [сотрудников](name) [отдела кадров](department) день рождения [в июне](birthday_specifier)?
+      - Есть ли у кого-то ДР [на следующей неделе](birthday_specifier) в [IT отделе](department)?
+      - Дни рождения [в октябре](birthday_specifier) для [отдела аналитики](department)
+      - Кто из [отдела продаж](department) именинник [в этом месяце](birthday_specifier)?
+      - Именинники [отдела разработки](department) [на этой неделе](birthday_specifier)
+
+      # --- Запросы с проектом ---
+      - Мне нужны дни рождения [в этом месяце](birthday_specifier) для [проектной команды Альфа](project)
+      - Дни рождения [сотрудников](name) [проекта Омега](project) [в текущем месяце](birthday_specifier)
+      - Кто из [проекта Гамма](project) отмечает день рождения [зимой](birthday_specifier)?
+
+      # --- Запросы с возрастом ---
+      - Покажи дни рождения сотрудников старше [30](age_older_than) лет [в этом месяце](birthday_specifier)
+      - Дни рождения сотрудников младше [25](age_younger_than) лет [на этой неделе](birthday_specifier)
+      - Есть ли именинники [на этой неделе](birthday_specifier) среди тех, кому больше [40](age_older_than)?
+      - Кто из тех, кто младше [30](age_younger_than) лет, празднует ДР [в июле](birthday_specifier)?
+
+      # --- Комбинированные запросы ---
+      - У кого из [отдела маркетинга](department) день рождения [в июне](birthday_specifier) и они старше [28](age_older_than) лет?
+      - Дни рождения [на этой неделе](birthday_specifier) в [IT отделе](department) для сотрудников младше [35](age_younger_than) лет
+      - Именинники [проекта Зенит](project) из [отдела разработка](department), родившиеся [весной](birthday_specifier)
+      - Покажи дни рождения [в этом месяце](birthday_specifier) для [отдела продаж](department), кто старше [30](age_older_than) лет
+      - Дни рождения [в следующем месяце](birthday_specifier) для [сотрудников](name) из [HR](department) в проекте [Найм](project)
+
+      # --- Запросы с "неизвестными" категориями (модель попытается их отнести к birthday_specifier или они будут в тексте) ---
+      - Покажи дни рождения [всех менеджеров проектов](job_title_placeholder) [в этом квартале](birthday_specifier)
+      - Какие дни рождения в [июле](birthday_specifier) у [удалённых сотрудников](status_placeholder)?
+      - Когда празднует день рождения [руководитель отдела маркетинга](job_title_placeholder)?
+  
 
   - intent: check_task
     examples: |

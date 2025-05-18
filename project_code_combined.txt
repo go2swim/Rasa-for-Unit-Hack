@@ -303,6 +303,316 @@ JSON-объект следующей структуры:
     *   `bot_challenge`: Проверка, является ли собеседник ботом.
     *   `search_person`: Запрос на поиск сотрудника.
         *   Может включать фильтрацию по имени, отделу, проекту (включая роль "ответственный за проект"), навыкам/технологиям, точному возрасту, возрасту старше/младше, спецификатору дня рождения (включая "скоро", "на этой неделе").
+    *   `search_event`: Запрос на поиск, создание или управление мероприятием.
+        *   Может включать фильтрацию по названию мероприятия, дате/периоду, категории, месту проведения, отделу-участнику или организатору. Также может содержать указания на действия (создать, добавить участника, напомнить).
+    *   `find_birthday`: Запрос на поиск дней рождения (общий, не как атрибут конкретного сотрудника).
+    *   `check_task`: Запрос на проверку задач.
+    *   `check_employment_calendar`: Запрос на проверку календаря занятости.
+
+*   Сущности (Entities):
+    *   `name`: Имя, фамилия или ФИО человека.
+    *   `department`: Название отдела (может использоваться для фильтрации сотрудников или мероприятий).
+    *   `project`: Название проекта. Может иметь роль `lead`, если пользователь ищет ответственного за проект.
+    *   `skill`: Навык или технология (например, "Python", "Java", "дизайн").
+    *   `event_name`: Название мероприятия (например, "Общая планёрка", "летний тимбилдинг").
+    *   `date`: Дата или период времени (например, "завтра", "в июне", "25 мая", "10 июня в 18:00"). Распознается DIETClassifier, для более точного распознавания дат рекомендуется настроить DucklingHTTPExtractor.
+    *   `task_name`: Название задачи.
+    *   `age_exact`: Точный возраст (число).
+    *   `age_older_than`: Возраст для условия "старше чем" (число).
+    *   `age_younger_than`: Возраст для условия "младше чем" (число).
+    *   `birthday_specifier`: Описание дня рождения или периода (например, "в июне", "завтра", "скоро", "на этой неделе"). Может пересекаться с `date`.
+    *   `location`: Место проведения мероприятия (например, "переговорка Альфа", "онлайн", "в главном зале").
+    *   `event_category`: Категория или тип мероприятия (например, "тренинг", "корпоратив", "онлайн-эвент", "благотворительность").
+    *   `organizer`: Организатор мероприятия (например, "HR отдел", "Иван Петров").
+    *   `room_name`: Название переговорной комнаты или ресурса (используется в `check_employment_calendar`).
+
+
+Примеры Запросов и Ответов
+
+Пример 1: Поиск сотрудника
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Найди Иванова Петра из отдела разработки"
+  }'
+Ожидаемый ответ (структура):
+{
+  "text": "Найди Иванова Петра из отдела разработки",
+  "intent": { "name": "search_person", "confidence": 0.99... },
+  "entities": [
+    { "entity": "name", "value": "Иванова Петра", ... },
+    { "entity": "department", "value": "разработки", ... }
+  ], ...
+}
+
+Пример 2: Поиск мероприятия (расширенный)
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "text": "Какие корпоративные тренинги для отдела IT будут на следующей неделе в Москве?"
+  }'
+Ожидаемый ответ (структура):
+{
+  "text": "Какие корпоративные тренинги для отдела IT будут на следующей неделе в Москве?",
+  "intent": { "name": "search_event", "confidence": 0.97... },
+  "entities": [
+    { "entity": "event_category", "value": "корпоративные тренинги", ... },
+    { "entity": "department", "value": "отдела IT", ... },
+    { "entity": "date", "value": "на следующей неделе", ... },
+    { "entity": "location", "value": "Москве", ... }
+  ], ...
+}
+
+Пример 3: Простой запрос без сущностей
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Привет" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Привет",
+  "intent": { "name": "greet", "confidence": 0.99... },
+  "entities": [], ...
+}
+
+Пример 4: Запрос с синонимом
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Где Женя из маркетинга?" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Где Женя из маркетинга?",
+  "intent": { "name": "search_person", "confidence": 0.98... },
+  "entities": [
+    { "entity": "name", "value": "Евгений", ... }, // EntitySynonymMapper заменил "Женя" на "Евгений"
+    { "entity": "department", "value": "маркетинга", ... }
+  ], ...
+}
+
+Пример 5: Поиск сотрудника с указанием возраста
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Найди Марию из IT которой 30 лет" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Найди Марию из IT которой 30 лет",
+  "intent": { "name": "search_person", "confidence": 0.99... },
+  "entities": [
+    { "entity": "name", "value": "Марию", ... },
+    { "entity": "department", "value": "IT", ... },
+    { "entity": "age_exact", "value": "30", ... }
+  ], ...
+}
+
+Пример 6: Создание мероприятия (интерпретируется бэкендом на основе текста и search_event)
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Создай внутренний ивент Урок йоги на 10 июня в 18:00 в спортзале" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Создай внутренний ивент Урок йоги на 10 июня в 18:00 в спортзале",
+  "intent": { "name": "search_event", "confidence": 0.95... }, // Интент может быть общим
+  "entities": [
+    { "entity": "event_name", "value": "Урок йоги", ... },
+    { "entity": "date", "value": "10 июня в 18:00", ... },
+    { "entity": "location", "value": "спортзале", ... }
+    // Бэкенд анализирует "Создай" в "text" для выполнения действия
+  ], ...
+}
+
+Пример 7: Поиск ответственного за проект
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Кто отвечает за проект SpringSale в маркетинге?" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Кто отвечает за проект SpringSale в маркетинге?",
+  "intent": { "name": "search_person", "confidence": 0.99... },
+  "entities": [
+    { "entity": "project", "value": "SpringSale", "role": "lead", ... },
+    { "entity": "department", "value": "маркетинге", ... }
+  ], ...
+}
+
+Пример 8: Поиск по навыку
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Найди программистов на Python" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Найди программистов на Python",
+  "intent": { "name": "search_person", "confidence": 0.98... },
+  "entities": [
+    { "entity": "skill", "value": "Python", ... }
+  ], ...
+}
+
+Пример 9: Добавление участника на мероприятие (интерпретируется бэкендом)
+Запрос:
+curl -X POST \
+  http://localhost:5005/model/parse \
+  -H 'Content-Type: application/json' \
+  -d '{ "text": "Добавь меня на встречу Обсуждение бюджета 15-го числа" }'
+Ожидаемый ответ (структура):
+{
+  "text": "Добавь меня на встречу Обсуждение бюджета 15-го числа",
+  "intent": { "name": "search_event", "confidence": 0.96... },
+  "entities": [
+    { "entity": "event_name", "value": "Обсуждение бюджета", ... },
+    { "entity": "date", "value": "15-го числа", ... }
+    // Бэкенд анализирует "Добавь меня" в "text"
+  ], ...
+}
+
+Запуск сервиса
+Для работы API необходимо, чтобы сервер Rasa был запущен с включенным HTTP API. Команда для запуска (выполняется в корневой директории проекта Rasa):
+rasa run --enable-api --cors "*" -p 5005
+    --enable-api: Включает HTTP API.
+    --cors "*": Разрешает Cross-Origin Resource Sharing для всех источников (для разработки). В продакшене рекомендуется настроить более строгие правила CORS.
+    -p 5005: Указывает порт (можно изменить при необходимости).
+
+================================================================================
+
+# Файл: api_document.txt~
+# Содержимое:
+Документация API: Сервис Распознавания Намерений и Сущностей (NLU)
+
+Обзор
+Данный API-сервис предназначен для анализа текста на естественном языке (русском) с целью определения намерения (intent) пользователя и извлечения из текста ключевых сущностей (entities). Это позволяет преобразовывать свободные текстовые запросы в структурированные данные, которые могут быть использованы для дальнейшей обработки, например, для формирования запросов к базе данных или выполнения определенных действий.
+Сервис построен на базе Rasa NLU.
+
+Базовый URL
+Для локальной разработки (когда Rasa сервер запущен на вашей машине):
+http://localhost:5005
+
+При развертывании на сервере, замените localhost:5005 на актуальный адрес и порт вашего Rasa сервера.
+
+Эндпоинт
+Анализ текста (NLU Parse)
+URL: /model/parse
+Метод: POST
+Описание: Принимает текстовую строку и возвращает JSON-объект с результатами NLU-анализа, включая наиболее вероятное намерение и список извлеченных сущностей.
+
+Headers:
+    Content-Type: application/json
+
+Тело запроса (Request Body):
+JSON-объект с одним обязательным ключом text.
+{
+  "text": "Текстовый запрос пользователя"
+}
+    text (string, required): Текстовая строка, которую необходимо проанализировать.
+
+Ответ (Response):
+При успехе (Код 200 OK):
+JSON-объект следующей структуры:
+{
+  "text": "Оригинальный текст запроса пользователя",
+  "intent": {
+    "id": -7369890801234567890, // Пример ID, может меняться
+    "name": "имя_наиболее_вероятного_интента",
+    "confidence": 0.9985123872756958
+  },
+  "entities": [
+    {
+      "entity": "тип_сущности_1",
+      "start": 6,
+      "end": 20,
+      "confidence_entity": 0.9701234567890123,
+      "value": "извлеченное_значение_сущности_1",
+      "extractor": "DIETClassifier",
+      "processors": ["EntitySynonymMapper"] // Если применялся синонимайзер
+    },
+    {
+      "entity": "тип_сущности_2",
+      "start": 30,
+      "end": 40,
+      "confidence_entity": 0.9212345678901234,
+      "value": "извлеченное_значение_сущности_2",
+      "extractor": "DIETClassifier",
+      "role": "имя_роли" // Если для сущности была определена роль
+    }
+    // ... другие извлеченные сущности
+  ],
+  "intent_ranking": [
+    {
+      "id": -7369890801234567890,
+      "name": "имя_наиболее_вероятного_интента",
+      "confidence": 0.9985123872756958
+    },
+    {
+      "id": 1234567890123456789,
+      "name": "имя_второго_по_вероятности_интента",
+      "confidence": 0.0012345678901234567
+    }
+    // ... остальные интенты с их уверенностью
+  ],
+  "response_selector": { // Информация от ResponseSelector, если он используется
+    "all_retrieval_intents": [],
+    "default": {
+      "response": {
+        "id": null,
+        "responses": null,
+        "response_templates": null,
+        "confidence": 0.0,
+        "intent_response_key": null,
+        "utter_action": "utter_None",
+        "template_name": "utter_None"
+      },
+      "ranking": []
+    }
+  }
+}
+
+Описание полей ответа:
+    text (string): Оригинальный текст, отправленный в запросе.
+    intent (object): Объект, описывающий наиболее вероятное намерение.
+        id (long): Уникальный идентификатор интента.
+        name (string): Имя распознанного намерения (например, search_person, greet).
+        confidence (float): Уровень уверенности модели в этом намерении (от 0.0 до 1.0).
+    entities (array of objects): Массив объектов, где каждый объект представляет извлеченную сущность. Если сущности не найдены, массив будет пустым.
+        entity (string): Тип сущности (например, name, department, date, skill).
+        start (integer): Начальный индекс (с 0) первого символа значения сущности в исходной строке text.
+        end (integer): Конечный индекс (не включая) последнего символа значения сущности в исходной строке text.
+        confidence_entity (float): Уровень уверенности модели в извлечении этой сущности.
+        value (string): Извлеченное текстовое значение сущности. После применения EntitySynonymMapper здесь будет каноническое значение.
+        extractor (string): Имя компонента Rasa, который извлек эту сущность (например, DIETClassifier, RegexFeaturizer, DucklingEntityExtractor).
+        processors (array of string, optional): Список обработчиков, которые модифицировали сущность (например, EntitySynonymMapper).
+        role (string, optional): Если для сущности была определена и извлечена роль (например, "lead" для сущности "project"), она будет указана здесь.
+    intent_ranking (array of objects): Массив всех возможных намерений, отсортированных по убыванию уверенности. Полезно для отладки или реализации более сложной логики.
+        id (long): Уникальный идентификатор интента.
+        name (string): Имя интента.
+        confidence (float): Уровень уверенности.
+    response_selector (object): Информация от компонента ResponseSelector (если используется для выбора ответа).
+
+При ошибке: Стандартные HTTP-коды ошибок (например, 4xx, 5xx) с JSON-телом, описывающим ошибку (зависит от конфигурации Rasa).
+
+Текущие поддерживаемые Интенты и Сущности
+На данный момент модель обучена распознавать следующие основные интенты и сущности (согласно domain.yml):
+
+*   Интенты (Намерения):
+    *   `greet`: Приветствие.
+    *   `goodbye`: Прощание.
+    *   `affirm`: Утвердительный ответ.
+    *   `deny`: Отрицательный ответ.
+    *   `bot_challenge`: Проверка, является ли собеседник ботом.
+    *   `search_person`: Запрос на поиск сотрудника.
+        *   Может включать фильтрацию по имени, отделу, проекту (включая роль "ответственный за проект"), навыкам/технологиям, точному возрасту, возрасту старше/младше, спецификатору дня рождения (включая "скоро", "на этой неделе").
     *   `search_event`: Запрос на поиск мероприятия.
     *   `find_birthday`: Запрос на поиск дней рождения (общий, не как атрибут конкретного сотрудника).
     *   `check_task`: Запрос на проверку задач.
@@ -477,321 +787,6 @@ rasa run --enable-api --cors "*" -p 5005
 
 ================================================================================
 
-# Файл: api_document.txt~
-# Содержимое:
-Документация API: Сервис Распознавания Намерений и Сущностей (NLU)
-Обзор
-
-Данный API-сервис предназначен для анализа текста на естественном языке (русском) с целью определения намерения (intent) пользователя и извлечения из текста ключевых сущностей (entities). Это позволяет преобразовывать свободные текстовые запросы в структурированные данные, которые могут быть использованы для дальнейшей обработки, например, для формирования запросов к базе данных или выполнения определенных действий.
-
-Сервис построен на базе Rasa NLU.
-
-Базовый URL
-
-Для локальной разработки (когда Rasa сервер запущен на вашей машине):
-http://localhost:5005
-
-При развертывании на сервере, замените localhost:5005 на актуальный адрес и порт вашего Rasa сервера.
-
-Эндпоинт
-Анализ текста (NLU Parse)
-
-URL: /model/parse
-
-Метод: POST
-
-Описание: Принимает текстовую строку и возвращает JSON-объект с результатами NLU-анализа, включая наиболее вероятное намерение и список извлеченных сущностей.
-
-Headers:
-
-Content-Type: application/json
-
-Тело запроса (Request Body):
-JSON-объект с одним обязательным ключом text.
-
-{
-  "text": "Текстовый запрос пользователя"
-}
-
-
-text (string, required): Текстовая строка, которую необходимо проанализировать.
-
-Ответ (Response):
-
-При успехе (Код 200 OK):
-JSON-объект следующей структуры:
-
-{
-  "text": "Оригинальный текст запроса пользователя",
-  "intent": {
-    "name": "имя_наиболее_вероятного_интента",
-    "confidence": 0.9985123872756958
-  },
-  "entities": [
-    {
-      "entity": "тип_сущности_1",
-      "start": 6,  // начальный индекс сущности в "text"
-      "end": 20,   // конечный индекс сущности в "text"
-      "confidence_entity": 0.9701234567890123,
-      "value": "извлеченное_значение_сущности_1",
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "тип_сущности_2",
-      "start": 30,
-      "end": 40,
-      "confidence_entity": 0.9212345678901234,
-      "value": "извлеченное_значение_сущности_2",
-      "extractor": "DIETClassifier"
-    }
-    // ... другие извлеченные сущности
-  ],
-  "intent_ranking": [
-    {
-      "name": "имя_наиболее_вероятного_интента",
-      "confidence": 0.9985123872756958
-    },
-    {
-      "name": "имя_второго_по_вероятности_интента",
-      "confidence": 0.0012345678901234567
-    }
-    // ... остальные интенты с их уверенностью
-  ]
-  // ... могут присутствовать другие поля, специфичные для Rasa,
-  // но для базового использования достаточно указанных выше.
-}
-
-Описание полей ответа:
-
-text (string): Оригинальный текст, отправленный в запросе.
-
-intent (object): Объект, описывающий наиболее вероятное намерение.
-
-name (string): Имя распознанного намерения (например, search_person, greet).
-
-confidence (float): Уровень уверенности модели в этом намерении (от 0.0 до 1.0).
-
-entities (array of objects): Массив объектов, где каждый объект представляет извлеченную сущность. Если сущности не найдены, массив будет пустым.
-
-entity (string): Тип сущности (например, name, department, date).
-
-start (integer): Начальный индекс (с 0) первого символа значения сущности в исходной строке text.
-
-end (integer): Конечный индекс (не включая) последнего символа значения сущности в исходной строке text.
-
-confidence_entity (float): Уровень уверенности модели в извлечении этой сущности.
-
-value (string): Извлеченное текстовое значение сущности.
-
-extractor (string): Имя компонента Rasa, который извлек эту сущность (например, DIETClassifier, RegexFeaturizer).
-
-intent_ranking (array of objects): Массив всех возможных намерений, отсортированных по убыванию уверенности. Полезно для отладки или реализации более сложной логики.
-
-При ошибке: Стандартные HTTP-коды ошибок (например, 4xx, 5xx) с JSON-телом, описывающим ошибку (зависит от конфигурации Rasa).
-
-Текущие поддерживаемые Интенты и Сущности
-
-На данный момент модель обучена распознавать следующие основные интенты и сущности (согласно domain.yml):
-
-Интенты (Намерения):
-
-greet: Приветствие.
-
-goodbye: Прощание.
-
-affirm: Утвердительный ответ.
-
-deny: Отрицательный ответ.
-
-bot_challenge: Проверка, является ли собеседник ботом.
-
-search_person: Запрос на поиск сотрудника.
-
-search_event: Запрос на поиск мероприятия.
-
-find_birthday: Запрос на поиск дней рождения.
-
-check_task: Запрос на проверку задач.
-
-check_employment_calendar: Запрос на проверку календаря занятости.
-
-Сущности (Entities):
-
-name: Имя, фамилия или ФИО человека.
-
-department: Название отдела.
-
-project: Название проекта.
-
-event_name: Название мероприятия.
-
-date: Дата или период времени (например, "завтра", "в июне", "25 мая").
-
-task_name: Название задачи.
-
-(room_name): Упоминается в примерах NLU для check_employment_calendar, но не добавлена в секцию entities в domain.yml. Если планируется использовать, нужно добавить.
-
-Примеры Запросов и Ответов
-Пример 1: Поиск сотрудника
-
-Запрос:
-
-curl -X POST \
-  http://localhost:5005/model/parse \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "text": "Найди Иванова Петра из отдела разработки"
-  }'
-
-Ожидаемый ответ (структура):
-
-{
-  "text": "Найди Иванова Петра из отдела разработки",
-  "intent": {
-    "name": "search_person",
-    "confidence": 0.99...
-  },
-  "entities": [
-    {
-      "entity": "name",
-      "start": 6,
-      "end": 19,
-      "confidence_entity": 0.98...,
-      "value": "Иванова Петра",
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "department",
-      "start": 29,
-      "end": 39,
-      "confidence_entity": 0.95...,
-      "value": "разработки",
-      "extractor": "DIETClassifier"
-    }
-  ],
-  "intent_ranking": [
-    { "name": "search_person", "confidence": 0.99... },
-    // ...
-  ]
-}
-
-Пример 2: Поиск мероприятия
-
-Запрос:
-
-curl -X POST \
-  http://localhost:5005/model/parse \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "text": "Какие корпоративы будут на следующей неделе?"
-  }'
-
-
-Ожидаемый ответ (структура):
-
-{
-  "text": "Какие корпоративы будут на следующей неделе?",
-  "intent": {
-    "name": "search_event",
-    "confidence": 0.97...
-  },
-  "entities": [
-    {
-      "entity": "event_name",
-      "start": 6,
-      "end": 17,
-      "confidence_entity": 0.91...,
-      "value": "корпоративы",
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "date",
-      "start": 27,
-      "end": 44,
-      "confidence_entity": 0.89...,
-      "value": "на следующей неделе", // Точное извлечение даты зависит от компонентов, например, Duckling
-      "extractor": "DIETClassifier"  // или другой подходящий экстрактор
-    }
-  ],
-  "intent_ranking": [
-    { "name": "search_event", "confidence": 0.97... },
-    // ...
-  ]
-}
-
-
-Пример 3: Простой запрос без сущностей
-
-Запрос:
-
-curl -X POST \
-  http://localhost:5005/model/parse \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "text": "Привет"
-  }'
-
-
-Ожидаемый ответ (структура):
-
-{
-  "text": "Привет",
-  "intent": {
-    "name": "greet",
-    "confidence": 0.99...
-  },
-  "entities": [], // Сущности не найдены
-  "intent_ranking": [
-    { "name": "greet", "confidence": 0.99... },
-    // ...
-  ]
-}
-
-Пример 4: Запрос с синонимом
-
-Запрос:
-
-curl -X POST \
-  http://localhost:5005/model/parse \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "text": "Где Женя из маркетинга?"
-  }'
-
-Ожидаемый ответ (структура):
-
-{
-  "text": "Где Женя из маркетинга?",
-  "intent": {
-    "name": "search_person",
-    "confidence": 0.98...
-  },
-  "entities": [
-    {
-      "entity": "name",
-      "start": 4,
-      "end": 8,
-      "confidence_entity": 0.96...,
-      "value": "Евгений", // EntitySynonymMapper заменил "Женя" на "Евгений"
-      "extractor": "DIETClassifier"
-    },
-    {
-      "entity": "department",
-      "start": 12,
-      "end": 22,
-      "confidence_entity": 0.93...,
-      "value": "маркетинга",
-      "extractor": "DIETClassifier"
-    }
-  ],
-  "intent_ranking": [
-    { "name": "search_person", "confidence": 0.98... },
-    // ...
-  ]
-}
-
-================================================================================
-
 # Файл: config.yml
 # Содержимое:
 # The config recipe.
@@ -910,7 +905,186 @@ intents:
       use_entities:
         - event_name
         - date
+        - location # Новая сущность для событий
+        - event_category # Новая сущность для событий
+        - department # Может использоваться для фильтрации событий по отделу
+        - organizer # Новая сущность для событий
   - find_birthday: # Этот интент остается для общего поиска ДР
+      use_entities:
+        - name
+        - date
+  - check_task:
+      use_entities:
+        - task_name
+        - project
+        - date
+  - check_employment_calendar:
+      use_entities:
+        - name
+        - date
+        - room_name # Добавлено для согласованности с NLU
+
+entities:
+  - name
+  - department
+  - project
+  - event_name
+  - date
+  - task_name
+  - age_exact
+  - age_older_than
+  - age_younger_than
+  - birthday_specifier
+  - skill
+  - location # Новая сущность
+  - event_category # Новая сущность
+  - organizer # Новая сущность
+  - room_name # Новая сущность
+
+slots:
+  name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: name
+  department:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: department
+  project:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: project
+  event_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_name
+  date:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: date
+  task_name:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: task_name
+  age_exact:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: age_exact
+  age_older_than:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: age_older_than
+  age_younger_than:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: age_younger_than
+  birthday_specifier:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: birthday_specifier
+  skill:
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: skill
+  location: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: location
+  event_category: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: event_category
+  organizer: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: organizer
+  room_name: # Новый слот
+    type: text
+    influence_conversation: false
+    mappings:
+      - type: from_entity
+        entity: room_name
+
+responses:
+  utter_greet:
+    - text: "Привет! Чем могу помочь?"
+  utter_goodbye:
+    - text: "До свидания!"
+  utter_iamabot:
+    - text: "Я AI-ассистент."
+  utter_ask_details_person:
+    - text: "Можете уточнить имя, фамилию, отдел, проект, навыки, возраст или информацию о дне рождения сотрудника?"
+    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали, включая навыки, возраст или день рождения."
+  utter_ask_details_event:
+    - text: "Какое мероприятие, категорию, дату или место проведения вы ищете?"
+    - text: "Уточните название мероприятия, его тип, дату, место или кто организатор?"
+  utter_ask_details_task:
+    - text: "Уточните название задачи, проекта или дату."
+  utter_processing_request: # Общий ответ, который может быть использован перед вызовом action
+    - text: "Понял, обрабатываю ваш запрос..."
+
+actions:
+  - action_process_request
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true
+
+================================================================================
+
+# Файл: domain.yml~
+# Содержимое:
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - bot_challenge
+  - search_person:
+      use_entities:
+        - name
+        - department
+        - project # Теперь может иметь роль
+        - age_exact
+        - age_older_than
+        - age_younger_than
+        - birthday_specifier
+        - skill # Новая сущность
+  - search_event:
+      use_entities:
+        - event_name
+        - date
+  - find_birthday:
       use_entities:
         - name
         - date
@@ -1031,114 +1205,6 @@ session_config:
 
 ================================================================================
 
-# Файл: domain.yml~
-# Содержимое:
-version: "3.1"
-
-intents:
-  - greet
-  - goodbye
-  - affirm
-  - deny
-  - bot_challenge
-  - search_person:
-      use_entities:
-        - name
-        - department
-        - project
-  - search_event:
-      use_entities:
-        - event_name
-        - date
-  - find_birthday:
-      use_entities:
-        - name
-        - date
-  - check_task:
-      use_entities:
-        - task_name
-        - project
-        - date
-  - check_employment_calendar:
-      use_entities:
-        - name
-        - date
-
-entities:
-  - name
-  - department
-  - project
-  - event_name
-  - date
-  - task_name
-
-slots:
-  name:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: name
-  department:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: department
-  project:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: project
-  # ... (остальные слоты как в предыдущем ответе) ...
-  event_name:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: event_name
-  date:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: date
-  task_name:
-    type: text
-    influence_conversation: false
-    mappings:
-      - type: from_entity
-        entity: task_name
-
-responses:
-  utter_greet:
-    - text: "Привет! Чем могу помочь?"
-  utter_goodbye:
-    - text: "До свидания!"
-  utter_iamabot:
-    - text: "Я AI-ассистент."
-  utter_ask_details_person:
-    - text: "Можете уточнить имя, фамилию, отдел или проект сотрудника?"
-    - text: "Кого именно вы ищете? Пожалуйста, назовите имя, фамилию или другие известные детали."
-  # ... (остальные ответы как в предыдущем ответе) ...
-  utter_ask_details_event:
-    - text: "Какое мероприятие или дата вас интересует?"
-  utter_ask_details_task:
-    - text: "Уточните название задачи, проекта или дату."
-  utter_processing_request:
-    - text: "Понял, обрабатываю ваш запрос..."
-
-
-actions:
-  - action_process_request
-
-session_config:
-  session_expiration_time: 60
-  carry_over_slots_to_new_session: true
-
-================================================================================
-
 # Файл: endpoints.yml
 # Содержимое:
 # This file contains the different endpoints your bot can use.
@@ -1235,6 +1301,40 @@ action_endpoint:
 
 ================================================================================
 
+# Файл: file.txt
+# Содержимое:
+«Найди дни рождения сегодня»
+
+«Покажи дни рождения этой недели»
+
+«Какие дни рождения в этом месяце?»
+
+«Найди коллег, у которых день рождения зимой»
+
+«Какие дни рождения в отделе маркетинга в мае?»
+
+«Покажи дни рождения сотрудников старше 30 лет»
+
+«Найди дни рождения в следующем квартале»
+
+«Какие у нас ближайшие дни рождения?»
+
+«Покажи дни рождения всех менеджеров проектов»
+
+«Найди дни рождения, совпадающие с выходными»
+
+«Какие дни рождения в июле у удалённых сотрудников?»
+
+«Найди сотрудников с днем рождения в понедельник»
+
+«Покажи дни рождения по алфавиту»
+
+«Найди дни рождения в этом году в сентябре»
+
+“у кого из сотрудников отдела Х день рождения в июне
+
+================================================================================
+
 # Файл: README.md
 # Содержимое:
 # Rasa-for-Unit-Hack
@@ -1316,7 +1416,15 @@ if __name__ == "__main__":
         "Привет",
         "Покажи мне Волкова Михаила",
         "телефон Кузнецова",
-        "Сотрудник Лебедева Наталья из бухгалтерии в проекте Гамма"
+        "Сотрудник Лебедева Наталья из бухгалтерии в проекте Гамма",
+        "Какие корпоративные тренинги для отдела IT будут на следующей неделе в Москве?",
+        "Создай внутренний ивент Урок йоги на 10 июня в 18:00 в спортзале",
+        "Добавь меня в список участников встречи Общая планёрка 25 мая",
+        "Когда будет следующий хакатон и кто его организует?",
+        "Покажи все онлайн‑эвенты на следующей неделе",
+        "Найди внутрикорпоративное мероприятие, связанное с благотворительностью",
+        "Напомни всем участникам о встрече SprintReview за час до начала",
+        "Есть ли в этом месяце тимбилдинг для отдела IT?"
     ]
 
     for query in queries:
@@ -1332,16 +1440,216 @@ if __name__ == "__main__":
             if entities:
                 print("  Сущности:")
                 for entity in entities:
-                    print(f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}', "
-                          f"Confidence: {entity.get('confidence_entity', 'N/A'):.4f}")
+                    confidence_val = entity.get('confidence_entity', entity.get('confidence')) # DIET sometimes uses 'confidence'
+                    confidence_str = f", Confidence: {confidence_val:.4f}" if isinstance(confidence_val, float) else ""
+                    role_str = f", Role: {entity.get('role')}" if entity.get('role') else ""
+                    print(f"    - Тип: {entity.get('entity')}, Значение: '{entity.get('value')}'{confidence_str}{role_str}")
             else:
                 print("  Сущности: не найдены")
-            # print(json.dumps(nlu_result, indent=2, ensure_ascii=False)) # Раскомментируйте для полного вывода JSON
+            # Для полного вывода можно раскомментировать следующую строку:
+            # print(json.dumps(nlu_result, indent=2, ensure_ascii=False))
         print("-" * 30)
 
 ================================================================================
 
 # Файл: actions/actions.py
+# Содержимое:
+from typing import Any, Text, Dict, List
+import logging
+import json
+
+from rasa_sdk import Action, Tracker
+from rasa_sdk.executor import CollectingDispatcher
+from rasa_sdk.events import SlotSet  # Можем использовать для установки слотов, если понадобится
+
+logger = logging.getLogger(__name__)
+
+
+class ActionProcessRequest(Action):
+    def name(self) -> Text:
+        return "action_process_request"
+
+    def run(self, dispatcher: CollectingDispatcher,
+            tracker: Tracker,
+            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
+
+        intent_name = tracker.latest_message['intent'].get('name')
+        entities_from_tracker = tracker.latest_message.get('entities', [])
+        latest_message_text = tracker.latest_message.get('text')
+
+        extracted_data_for_backend = {
+            "intent": intent_name,
+            "entities": [],
+            "text": latest_message_text
+        }
+
+        log_message_parts = [f"Получен запрос с интентом: {intent_name}"]
+
+        if not entities_from_tracker:
+            log_message_parts.append("- Сущности не найдены.")
+        else:
+            log_message_parts.append("Извлеченные сущности:")
+            for entity in entities_from_tracker:
+                entity_info_for_backend = {
+                    "entity": entity['entity'],
+                    "value": entity['value'],
+                    "start": entity.get('start'),
+                    "end": entity.get('end')
+                }
+                if 'confidence_entity' in entity:
+                    entity_info_for_backend['confidence'] = round(entity['confidence_entity'], 4)
+                if 'role' in entity:
+                    entity_info_for_backend['role'] = entity['role']
+                if 'group' in entity:  # For regex entities
+                    entity_info_for_backend['group'] = entity['group']
+
+                extracted_data_for_backend["entities"].append(entity_info_for_backend)
+
+                role_str = f" (Роль: {entity['role']})" if 'role' in entity else ""
+                group_str = f" (Группа: {entity['group']})" if 'group' in entity else ""  # For regex
+                confidence_val = entity.get('confidence_entity', 'N/A')
+                confidence_str = f" (Confidence: {confidence_val:.2f})" if isinstance(confidence_val, float) else ""
+
+                log_message_parts.append(
+                    f"- Тип: {entity['entity']}{role_str}{group_str}, Значение: '{entity['value']}'{confidence_str}"
+                )
+
+        final_log_message = "\n".join(log_message_parts)
+        logger.info(f"Processing request: {latest_message_text}\n{final_log_message}")
+        logger.info(
+            f"Data structure for backend (from /model/parse or similar action output):\n{json.dumps(extracted_data_for_backend, ensure_ascii=False, indent=2)}")
+
+        # --- Формирование ответа пользователю (для демонстрации в чате) ---
+        response_message = f"✅ Ваш запрос (интент: {intent_name}) принят. "
+        details_parts = []
+
+        if intent_name == "search_person":
+            temp_search_params = {}
+            projects_lead = []
+            projects_participant = []
+            skills = []
+
+            for ent in extracted_data_for_backend["entities"]:
+                entity_type = ent["entity"]
+                entity_value = ent["value"]
+                entity_role = ent.get("role")
+
+                if entity_type == "project":
+                    if entity_role == "lead":
+                        projects_lead.append(entity_value)
+                    else:
+                        projects_participant.append(entity_value)
+                elif entity_type == "skill":
+                    skills.append(entity_value)
+                elif entity_type not in temp_search_params:  # name, department, age_exact etc.
+                    temp_search_params[entity_type] = entity_value
+                elif isinstance(temp_search_params[entity_type], list):
+                    temp_search_params[entity_type].append(entity_value)
+                else:  # convert to list if multiple values for same entity type (e.g. multiple names)
+                    temp_search_params[entity_type] = [temp_search_params[entity_type], entity_value]
+
+            if temp_search_params.get("name"): details_parts.append(f"Имя/ФИО: '{temp_search_params.get('name')}'")
+            if temp_search_params.get("department"): details_parts.append(
+                f"Отдел: '{temp_search_params.get('department')}'")
+            if projects_participant: details_parts.append(f"Участие в проекте(ах): '{', '.join(projects_participant)}'")
+            if projects_lead: details_parts.append(f"Руководство проектом(ами): '{', '.join(projects_lead)}'")
+            if skills: details_parts.append(f"Навыки: '{', '.join(skills)}'")
+            if temp_search_params.get("age_exact"): details_parts.append(
+                f"Возраст: '{temp_search_params.get('age_exact')}'")
+            if temp_search_params.get("age_older_than"): details_parts.append(
+                f"Старше: '{temp_search_params.get('age_older_than')}' лет")
+            if temp_search_params.get("age_younger_than"): details_parts.append(
+                f"Младше: '{temp_search_params.get('age_younger_than')}' лет")
+            if temp_search_params.get("birthday_specifier"): details_parts.append(
+                f"День рождения: '{temp_search_params.get('birthday_specifier')}'")
+
+            if details_parts:
+                response_message = f"✅ Запрос на поиск сотрудника принят. Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = "✅ Запрос на поиск сотрудника принят (без уточняющих критериев)."
+
+        elif intent_name == "search_event":
+            event_params = {}
+            for ent in extracted_data_for_backend["entities"]:
+                if ent["entity"] not in event_params:
+                    event_params[ent["entity"]] = ent["value"]
+                elif isinstance(event_params[ent["entity"]], list):
+                    event_params[ent["entity"]].append(ent["value"])
+                else:
+                    event_params[ent["entity"]] = [event_params[ent["entity"]], ent["value"]]
+
+            if event_params.get("event_name"): details_parts.append(f"Название: '{event_params.get('event_name')}'")
+            if event_params.get("event_category"): details_parts.append(
+                f"Категория: '{event_params.get('event_category')}'")
+            if event_params.get("date"): details_parts.append(f"Дата/период: '{event_params.get('date')}'")
+            if event_params.get("location"): details_parts.append(f"Место: '{event_params.get('location')}'")
+            if event_params.get("department"): details_parts.append(f"Для отдела: '{event_params.get('department')}'")
+            if event_params.get("organizer"): details_parts.append(f"Организатор: '{event_params.get('organizer')}'")
+
+            # Check for action keywords in original text
+            action_taken_msg = ""
+            if "создай" in latest_message_text.lower() or "запланируй" in latest_message_text.lower() or "организуй" in latest_message_text.lower():
+                action_taken_msg = "Запрос на создание/планирование мероприятия принят. "
+            elif "добавь" in latest_message_text.lower() or "запиши меня" in latest_message_text.lower():
+                action_taken_msg = "Запрос на добавление участника принят. "
+            elif "напомни" in latest_message_text.lower():
+                action_taken_msg = "Запрос на напоминание о мероприятии принят. "
+            elif "удали" in latest_message_text.lower():
+                action_taken_msg = "Запрос на удаление мероприятия принят. "
+            elif "перенеси" in latest_message_text.lower():
+                action_taken_msg = "Запрос на перенос мероприятия принят. "
+            else:
+                action_taken_msg = "Запрос по мероприятию принят. "
+
+            if details_parts:
+                response_message = f"✅ {action_taken_msg}Критерии: {'; '.join(details_parts)}."
+            else:
+                response_message = f"✅ {action_taken_msg}Уточните детали мероприятия."
+
+
+        elif intent_name == "find_birthday":
+            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
+                               "всех сотрудников")
+            birthday_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
+                                 "не указана")
+            response_message = f"✅ Запрос на поиск дней рождения для '{person_name}' (дата/период: '{birthday_date}') принят."
+
+        elif intent_name == "check_task":
+            task_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'task_name'),
+                             "не указана")
+            project_name = next(
+                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'project'), "не указан")
+            task_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
+                             "не указана")
+            response_message = f"✅ Запрос на проверку задачи '{task_name}' (проект: '{project_name}', дата: '{task_date}') принят."
+
+        elif intent_name == "check_employment_calendar":
+            person_name = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'name'),
+                               "не указан")
+            calendar_date = next((e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'date'),
+                                 "не указана")
+            room_name_val = next(
+                (e['value'] for e in extracted_data_for_backend["entities"] if e['entity'] == 'room_name'), None)
+            room_str = f", ресурс: '{room_name_val}'" if room_name_val else ""
+            response_message = f"✅ Запрос на проверку календаря занятости для '{person_name}' (дата: '{calendar_date}'{room_str}) принят."
+
+        elif intent_name == "greet":
+            response_message = "Привет! Чем могу помочь?"
+        elif intent_name == "goodbye":
+            response_message = "До свидания!"
+        elif intent_name == "affirm":
+            response_message = "Понял."
+        elif intent_name == "deny":
+            response_message = "Хорошо."
+        elif intent_name == "bot_challenge":
+            response_message = "Я AI-ассистент, созданный для помощи в корпоративных задачах."
+
+        dispatcher.utter_message(text=response_message)
+        return []
+
+================================================================================
+
+# Файл: actions/actions.py~
 # Содержимое:
 from typing import Any, Text, Dict, List
 import logging
@@ -1513,118 +1821,6 @@ class ActionProcessRequest(Action):
         # Но для вашего случая (использование /model/parse) это не требуется.
 
         return []  # Никаких событий для изменения диалога не возвращаем, если это чисто NLU + Rules
-
-================================================================================
-
-# Файл: actions/actions.py~
-# Содержимое:
-from typing import Any, Text, Dict, List
-import logging
-
-from rasa_sdk import Action, Tracker
-from rasa_sdk.executor import CollectingDispatcher
-
-# from rasa_sdk.events import SlotSet, UserUtteranceReverted # Не используются в текущей версии
-
-logger = logging.getLogger(__name__)
-
-
-class ActionProcessRequest(Action):
-    def name(self) -> Text:
-        return "action_process_request"
-
-    def run(self, dispatcher: CollectingDispatcher,
-            tracker: Tracker,
-            domain: Dict[Text, Any]) -> List[Dict[Text, Any]]:
-
-        intent_name = tracker.latest_message['intent'].get('name')
-        entities = tracker.latest_message.get('entities', [])  # Убедимся, что entities всегда список
-
-        # Формируем структурированные данные для возможной отправки вовне
-        extracted_data = {
-            "intent": intent_name,
-            "entities": [],
-            "text": tracker.latest_message.get('text')
-        }
-
-        # Сообщение для логирования и ответа пользователю (для демонстрации)
-        log_message_parts = [f"Получен запрос с интентом: {intent_name}"]
-
-        if not entities:
-            log_message_parts.append("- Сущности не найдены.")
-        else:
-            log_message_parts.append("Извлеченные сущности:")
-            for entity in entities:
-                entity_info = {"entity": entity['entity'], "value": entity['value']}
-                if 'group' in entity:  # для regex entities
-                    entity_info['group'] = entity['group']
-                if 'role' in entity:  # для roles
-                    entity_info['role'] = entity['role']
-
-                extracted_data["entities"].append(entity_info)
-                log_message_parts.append(
-                    f"- {entity['entity']}: {entity['value']} (confidence: {entity.get('confidence_entity', 'N/A'):.2f})")
-
-        final_log_message = "\n".join(log_message_parts)
-        logger.info(f"Processing request: {tracker.latest_message.get('text')}\n{final_log_message}")
-        logger.info(f"Data to send to backend: {extracted_data}")
-
-        # Ответ пользователю (для демонстрации)
-        # dispatcher.utter_message(text=f"Обрабатываю ваш запрос: {tracker.latest_message.get('text')}")
-        # dispatcher.utter_message(text=final_log_message) # Можно закомментировать, если не нужен такой подробный ответ в чате
-
-        # Пример специфичной логики для search_person
-        if intent_name == "search_person":
-            # Собираем все значения для сущности 'name'
-            names_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'name']
-            departments_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'department']
-            projects_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'project']
-
-            # Для простоты берем первое найденное имя, отдел, проект
-            name_query = names_found[0] if names_found else "не указано"
-            department_query = departments_found[0] if departments_found else "не указан"
-            project_query = projects_found[0] if projects_found else "не указан"
-
-            # Это сообщение можно использовать для отладки или как часть ответа
-            # dispatcher.utter_message(
-            #     text=f"Ищу сотрудника: Имя/Фамилия: '{name_query}', Отдел: '{department_query}', Проект: '{project_query}'."
-            # )
-
-            # Здесь ваша логика обращения к БД или API для поиска сотрудника
-            # response_from_db = self.query_employee_db(name_query, department_query, project_query)
-            # dispatcher.utter_message(text=response_from_db)
-            # Для хакатона: просто подтверждаем получение данных
-            dispatcher.utter_message(
-                text=f"✅ Запрос на поиск сотрудника '{name_query}' (отдел: '{department_query}', проект: '{project_query}') принят.")
-
-
-        elif intent_name == "search_event":
-            event_names_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'event_name']
-            dates_found = [e['value'] for e in extracted_data["entities"] if e['entity'] == 'date']
-            event_query = event_names_found[0] if event_names_found else "не указано"
-            date_query = dates_found[0] if dates_found else "не указана"
-            dispatcher.utter_message(
-                text=f"✅ Запрос на поиск мероприятия '{event_query}' (дата: '{date_query}') принят.")
-
-        # Добавьте обработку других интентов по аналогии
-        else:
-            # Общий ответ, если для интента нет специфичной логики выше
-            dispatcher.utter_message(text=f"✅ Ваш запрос (интент: {intent_name}) принят к обработке.")
-
-        # В реальном приложении здесь бы мог быть вызов вашего API:
-        # requests.post("URL_ВАШЕГО_БЭКЕНДА", json=extracted_data)
-
-        return []
-
-    # def query_employee_db(self, name, department, project):
-    #     # Заглушка для метода обращения к БД
-    #     # В реальном приложении здесь будет код для запроса к вашей базе данных
-    #     # Например, используя psycopg2, SQLAlchemy, requests к вашему API и т.д.
-    #     logger.info(f"DB Query (simulated): Searching for Name='{name}', Department='{department}', Project='{project}'")
-    #     # Пример ответа
-    #     if name != "не указано":
-    #         return f"Информация по сотруднику '{name}' найдена (симуляция)."
-    #     return "Недостаточно данных для поиска сотрудника (симуляция)."
 
 ================================================================================
 
@@ -1901,16 +2097,144 @@ nlu:
   - intent: search_event
     examples: |
       - Какие мероприятия [завтра](date)?
-      - Что у нас по [корпоративам](event_name)?
+      - Какие мероприятия запланированы на [сегодня](date)?
+      - Что у нас по [корпоративам](event_category)?
+      - Какие [корпоративы](event_category) будут на [следующей неделе](date)?
       - Когда будет [летний тимбилдинг](event_name)?
       - Покажи календарь мероприятий на [следующей неделе](date)
       - Будет ли [новогодний праздник](event_name) [в декабре](date)?
-      - Расписание [тренингов](event_name)
+      - Расписание [тренингов](event_category)
       - Какие [события](event_name) запланированы на [25 мая](date)
       - Что интересного [в пятницу](date)?
       - Ищу [конференцию по AI](event_name)
+      - Покажи все [корпоративные тренинги](event_category) в [июне](date).
+      - Какие [встречи](event_category) запланированы?
+      - Какие есть [онлайн](event_category) мероприятия?
+      - Список всех [событий](event_name) на [этот месяц](date)
+      - Мероприятия на [ближайшую неделю](date)
+      - Что будет [послезавтра](date)?
+      - Есть ли какие-нибудь [лекции](event_category) [в этом квартале](date)?
+      - Расскажи про [митапы](event_category) [в этом месяце](date)
+      - А что по [вебинарам](event_category) на [завтра](date)?
+      - Есть планы на [корпоративные выезды](event_category) [летом](date)?
+      - Ищу [событие](event_name) "[Большая встреча](event_name)"
+      - Что известно о [хакатоне](event_name) [в сентябре](date)?
+      - Какие [собрания](event_category) на [этой неделе](date)?
+      - Покажи [календарь ивентов](event_name)
+      - Ивенты [на сегодня](date)
+      - Будут ли [мастер-классы](event_category) [в ближайшее время](date)?
+      - Какие [семинары](event_category) планируются [в августе](date)?
 
-  - intent: find_birthday # Общий поиск ДР
+      # --- Поиск с фильтрацией по отделу ---
+      - Есть ли [в этом месяце](date) [тимбилдинг](event_category) для [отдела IT](department)?
+      - Какие [тренинги](event_category) для [маркетологов](department) пройдут [в июле](date)?
+      - Мероприятия для [отдела продаж](department) на [следующей неделе](date)
+      - Планируется ли [корпоратив](event_category) для [разработчиков](department)?
+      - События для [HR департамента](department)
+      - Что есть для [финансистов](department) [в этом квартале](date)?
+      - [Встречи](event_category) для [команды аналитиков](department) [в пятницу](date)
+      - Какие [образовательные мероприятия](event_category) для [новичков](department) у нас есть? (новичков - может быть ролью или спецификой отдела)
+      - [Хакатон](event_name) для [инженеров](department) будет?
+      - [Корпоративный пикник](event_name) для [всех отделов](department)
+
+      # --- Поиск с указанием места ---
+      - Где и когда пройдёт [корпоративный пикник](event_name)?
+      - Какие мероприятия в [переговорке Альфа](location) [завтра](date)?
+      - Что будет [онлайн](location) на [этой неделе](date)?
+      - [Конференция по маркетингу](event_name) будет проходить [в главном зале](location)?
+      - Найди [события](event_name) в [офисе на Лесной](location)
+      - Какие [вебинары](event_category) пройдут [онлайн](location)?
+      - [Тимбилдинг](event_name) на [базе отдыха Солнечная](location) когда?
+      - Планируются ли [офлайн](location) [встречи](event_category) [в этом месяце](date)?
+      - [Тренинг по продажам](event_name) в [конференц-зале №3](location)
+      - Ищу [мероприятия](event_name) [в Санкт-Петербурге](location)
+      - Что будет [в Zoom](location) [завтра вечером](date)?
+      - [Лекция по ИИ](event_name) [в аудитории 101](location)
+      - События [вне офиса](location)
+
+      # --- Поиск по организатору ---
+      - Когда будет следующий [хакатон](event_name) и кто его организует?
+      - Какие мероприятия организует [HR отдел](organizer)?
+      - Что планирует [Иван Петров](organizer) на [следующий месяц](date)?
+      - [Встреча с CEO](event_name), кто [организатор](organizer)?
+      - Какой [тренинг](event_category) проводит [компания "Эксперты"](organizer)?
+      - [Вебинар](event_name) от [Марии Сидоровой](organizer)
+      - Кто отвечает за [новогодний корпоратив](event_name)?
+      - Мероприятия от [профсоюза](organizer)
+      - [Обучающий курс](event_name) от [внешнего подрядчика "SkillUp"](organizer)
+      - Чей [семинар по Agile](event_name) будет [в среду](date)?
+
+      # --- Поиск по категории/типу ---
+      - Найди [внутрикорпоративное мероприятие, связанное с благотворительностью](event_category).
+      - Покажи мне все [онлайн‑эвенты](event_category) на [следующей неделе](date).
+      - Есть ли [спортивные](event_category) мероприятия?
+      - Ищу [образовательные](event_category) [семинары](event_name)
+      - Какие [развлекательные](event_category) события намечаются?
+      - Покажи [благотворительные акции](event_category)
+      - Что из [обучающих курсов](event_category) есть [в этом месяце](date)?
+      - Интересуют [неформальные встречи](event_category)
+      - Есть ли какие-нибудь [технические митапы](event_category)?
+      - Покажи [все воркшопы](event_category)
+      - Ищу [стратегическую сессию](event_category)
+
+      # --- Запросы, подразумевающие создание/добавление/управление (NLU извлекает данные, бэк решает) ---
+      - Добавь меня в список участников встречи "[Общая планёрка](event_name)" [25 мая](date).
+      - Запиши меня на [тренинг по продажам](event_name) [в следующий вторник](date)
+      - Хочу участвовать в [хакатоне](event_name)
+      - Создай внутренний ивент "[Урок йоги](event_name)" на [10 июня в 18:00](date) в [спортзале](location).
+      - Запланируй [командный обед](event_name) для [отдела аналитики](department) на [пятницу в 13:00](date).
+      - Организуй [встречу по проекту Альфа](event_name) [завтра в 10 утра](date) в [переговорке 3](location).
+      - Напомни всем участникам о встрече "[SprintReview](event_name)" [за час до начала](date).
+      - Отправь напоминание о [вебинаре по безопасности](event_name) [завтра утром](date).
+      - Удали событие "[Старая встреча](event_name)" из календаря.
+      - Перенеси [совещание](event_name) с [понедельника](date) на [среду](date).
+      - Кто идет на [корпоратив](event_name) [в субботу](date)?
+      - Покажи участников [встречи по бюджету](event_name).
+      - Создай событие: [обсуждение нового дизайна](event_name), [дата](date): [15 июля](date), [место](location): [переговорка Солнце](location).
+      - Можно ли записаться на [курс по Python](event_name)?
+      - Добавь [Александра Иванова](name) на [тимбилдинг](event_name) [10-го числа](date).
+      - Забронируй [конференц-зал](location) для [презентации продукта](event_name) на [следующий понедельник](date) [с 14 до 16](date).
+      - Создай напоминалку про [созвон с клиентом](event_name) на [завтра в 11](date).
+      - Отмени мою регистрацию на "[Воркшоп по Figma](event_name)".
+      - Измени время [встречи "Еженедельный синк"](event_name) на [15:00](date).
+      - Пригласи [команду разработки](department) на [демо нового функционала](event_name) [в четверг](date).
+
+      # --- Сложные запросы с несколькими сущностями ---
+      - Какие [тренинги](event_category) по [продажам](event_name) от [Ивана Иванова](organizer) будут [в Москве](location) [в следующем месяце](date)?
+      - Найди [онлайн](event_category) [конференцию](event_name) по [маркетингу](department) на [этой неделе](date).
+      - Запланируй [тимбилдинг](event_category) для [IT-отдела](department) на [природе](location) [в конце июня](date).
+      - Хочу пойти на [мастер-класс по Python](event_name), который проводит [Алексей Смирнов](organizer), [15 числа](date) [онлайн](location).
+      - Какие [благотворительные](event_category) мероприятия запланировал [отдел HR](organizer) на [осень](date)?
+      - Есть ли [технические воркшопы](event_category) от [компании TechGuru](organizer) для [разработчиков](department) [летом](date) [в нашем офисе](location)?
+      - Покажи [все спортивные мероприятия](event_category), организованные [Алексеем Петровым](organizer), которые пройдут [в июле](date) [на стадионе](location).
+      - Ищу [обучающий курс](event_category) "[Основы дизайна](event_name)" от [школы SkillFactory](organizer), который начнется [в сентябре](date) и будет проходить [онлайн](location).
+      - [Встреча](event_category) по [обсуждению KPI](event_name) для [отдела продаж](department) [завтра](date) [в 10:00](date) [в переговорке Запад](location), организатор [Мария Кузнецова](organizer).
+      - Какие [неформальные встречи](event_category) [после работы](date) организует [кто-нибудь из команды маркетинга](organizer) [в баре "У друзей"](location)?
+
+      # --- Запросы с неполной информацией или общими словами ---
+      - Что у нас по мероприятиям [в ближайшие дни](date)?
+      - Какие-нибудь [интересные события](event_name) намечаются?
+      - Есть что-то [полезное для разработчиков](department) [в этом месяце](date)?
+      - Расскажи про [ближайшие ивенты](event_name).
+      - Что там с [корпоративом](event_name)?
+      - Планы на [эту неделю](date) по [обучению](event_category)?
+      - Какие-нибудь [собрания](event_category) [завтра](date)?
+      - Есть ли что-то [для всех сотрудников](department) [в пятницу](date)?
+      - Какие [внутренние мероприятия](event_category) вообще бывают?
+      - Что-нибудь [по тимбилдингу](event_category) для [нашего отдела](department)?
+
+      # --- Вопросы о деталях мероприятий (NLU ловит интент и сущности, бэк ищет детали) ---
+      - Кто будет вести [тренинг по переговорам](event_name) [в следующий понедельник](date)?
+      - Сколько стоит участие в [конференции "TechLead Conf"](event_name)? (сущность "цена" не выделяется, но интент важен)
+      - Какая программа у [летнего корпоратива](event_name)?
+      - Где будет проходить [встреча выпускников курса](event_name)?
+      - Нужна ли регистрация на [вебинар по кибербезопасности](event_name)?
+      - Дресс-код на [новогодний бал](event_name) какой?
+      - Кто из [коллег из IT](department) идет на [митап по Java](event_name)?
+      - Будет ли запись [онлайн-лекции](event_category) по [Data Science](event_name)?
+
+
+  - intent: find_birthday
     examples: |
       - У кого день рождения [в этом месяце](date)?
       - Когда ДР у [Ивана Петрова](name)?
@@ -1919,6 +2243,7 @@ nlu:
       - У [Анны](name) скоро день рождения?
       - Чьи дни рождения [на этой неделе](date)?
       - Кто отмечает ДР [завтра](date)?
+      - Есть ли в календаре дня рождения коллег в [мае](date)?
 
   - intent: check_task
     examples: |
@@ -1993,190 +2318,190 @@ nlu:
       - ты программа?
 
   - intent: search_person
-      examples: |
-        # --- Базовые запросы по Имени/Фамилии/ФИО ---
-        - Найди [Анну](name)
-        - Где работает [Петр](name)?
-        - Мне нужен [Сергей](name) из [IT](department)
-        - Кто такая [Ольга](name) из [маркетинга](department)
-        - Покажи [Виктора](name)
-        - Ищу [Марию](name)
-        - А где [Алексей](name)?
-        - Как найти [Светлану](name)?
-        - Мне бы [Дмитрия](name)
-        - Найди мне [Наталью](name)
-        - Покажите [Андрея](name)
-        - Разыскивается [Ирина](name)
+    examples: |
+      # --- Базовые запросы по Имени/Фамилии/ФИО ---
+      - Найди [Анну](name)
+      - Где работает [Петр](name)?
+      - Мне нужен [Сергей](name) из [IT](department)
+      - Кто такая [Ольга](name) из [маркетинга](department)
+      - Покажи [Виктора](name)
+      - Ищу [Марию](name)
+      - А где [Алексей](name)?
+      - Как найти [Светлану](name)?
+      - Мне бы [Дмитрия](name)
+      - Найди мне [Наталью](name)
+      - Покажите [Андрея](name)
+      - Разыскивается [Ирина](name)
 
-        # Только фамилия
-        - Где найти [Смирнова](name)?
-        - Мне нужен [Иванов](name) из [продаж](department) в проекте [Альфа](project)
-        - Контакты [Кузнецова](name)
-        - Кто такой [Петров](name) из [отдела кадров](department)?
-        - [Васильев](name) в каком отделе?
-        - Что известно о [Соколове](name)?
-        - Фамилия [Михайлов](name), покажи его профиль
-        - [Новиков](name), где он сидит?
-        - Мне нужен некий [Федоров](name)
-        - [Морозов](name) тут работает?
-        - А [Волков](name) где?
+      # Только фамилия
+      - Где найти [Смирнова](name)?
+      - Мне нужен [Иванов](name) из [продаж](department) в проекте [Альфа](project)
+      - Контакты [Кузнецова](name)
+      - Кто такой [Петров](name) из [отдела кадров](department)?
+      - [Васильев](name) в каком отделе?
+      - Что известно о [Соколове](name)?
+      - Фамилия [Михайлов](name), покажи его профиль
+      - [Новиков](name), где он сидит?
+      - Мне нужен некий [Федоров](name)
+      - [Морозов](name) тут работает?
+      - А [Волков](name) где?
 
-        # Имя + Фамилия
-        - Найди [Анну Смирнову](name)
-        - Ищу [Петра Иванова](name) из [IT](department)
-        - Покажи мне [Сергея Кузнецова](name) из отдела [продаж](department)
-        - Где работает [Иван Попов](name) в проекте [Омега](project)?
-        - Кто такой [Алексей Васильев](name)
-        - Контакты [Ольги Петровой](name)
-        - Телефон [Виктора Соколова](name)
-        - Кабинет [Марии Михайловой](name)
-        - Позовите [Константина Новикова](name)
-        - Мне бы [Елену Федорову](name) из [бухгалтерии](department)
-        - Как связаться с [Дмитрием Морозовым](name)?
-        - [Светлана Волкова](name) в каком проекте?
-        - [Михаил Алексеев](name) из [логистики](department)
-        - Нужна [Наталья Лебедева](name)
-        - Покажите [Андрея Семенова](name)
-        - Разыскиваю [Ирину Егорову](name)
+      # Имя + Фамилия
+      - Найди [Анну Смирнову](name)
+      - Ищу [Петра Иванова](name) из [IT](department)
+      - Покажи мне [Сергея Кузнецова](name) из отдела [продаж](department)
+      - Где работает [Иван Попов](name) в проекте [Омега](project)?
+      - Кто такой [Алексей Васильев](name)
+      - Контакты [Ольги Петровой](name)
+      - Телефон [Виктора Соколова](name)
+      - Кабинет [Марии Михайловой](name)
+      - Позовите [Константина Новикова](name)
+      - Мне бы [Елену Федорову](name) из [бухгалтерии](department)
+      - Как связаться с [Дмитрием Морозовым](name)?
+      - [Светлана Волкова](name) в каком проекте?
+      - [Михаил Алексеев](name) из [логистики](department)
+      - Нужна [Наталья Лебедева](name)
+      - Покажите [Андрея Семенова](name)
+      - Разыскиваю [Ирину Егорову](name)
 
-        # Фамилия + Имя
-        - Найди [Новикова Константина](name)
-        - Ищу [Федорову Елену](name) из [бухгалтерии](department)
-        - Покажи мне [Морозова Дмитрия](name)
-        - Сотрудник [Волков Михаил](name)
-        - [Алексеева Михаила](name) контакты
-        - [Лебедеву Наталью](name) где найти?
-        - [Семенова Андрея](name) из [HR](department)
-        - [Егорову Ирину](name) из проекта [Запуск](project)
-        - Мне нужен [Попов Иван](name)
-        - Где сидит [Васильев Алексей](name)?
+      # Фамилия + Имя
+      - Найди [Новикова Константина](name)
+      - Ищу [Федорову Елену](name) из [бухгалтерии](department)
+      - Покажи мне [Морозова Дмитрия](name)
+      - Сотрудник [Волков Михаил](name)
+      - [Алексеева Михаила](name) контакты
+      - [Лебедеву Наталью](name) где найти?
+      - [Семенова Андрея](name) из [HR](department)
+      - [Егорову Ирину](name) из проекта [Запуск](project)
+      - Мне нужен [Попов Иван](name)
+      - Где сидит [Васильев Алексей](name)?
 
-        # Полное ФИО (если применимо)
-        - Найди [Смирнова Анну Петровну](name)
-        - Мне нужен [Иванов Петр Сергеевич](name)
-        - Кто такой [Кузнецов Сергей Иванович](name) из [разработки](department)?
-        - [Волков Михаил Андреевич](name), он у нас работает?
-        - [Федорова Елена Дмитриевна](name), в каком она отделе?
-        - [Петров Иван Алексеевич](name) из проекта [Квант](project)
-        - Нужен [Сидоров Николай Викторович](name)
+      # Полное ФИО (если применимо)
+      - Найди [Смирнова Анну Петровну](name)
+      - Мне нужен [Иванов Петр Сергеевич](name)
+      - Кто такой [Кузнецов Сергей Иванович](name) из [разработки](department)?
+      - [Волков Михаил Андреевич](name), он у нас работает?
+      - [Федорова Елена Дмитриевна](name), в каком она отделе?
+      - [Петров Иван Алексеевич](name) из проекта [Квант](project)
+      - Нужен [Сидоров Николай Викторович](name)
 
-        # Использование "сотрудник", "коллега" и т.п.
-        - Сотрудник [Алексеев](name) из [логистики](department)
-        - Найди сотрудника [Лебедеву Наталью](name)
-        - Мне нужен сотрудник [Семенов Андрей](name)
-        - Коллега [Попова Мария](name), ее телефон
-        - Человек по фамилии [Григорьев](name)
-        - Есть ли у нас работник [Степанов](name)?
-        - Ищу коллегу [Анну Власову](name)
-        - Мне нужен специалист [Кирилл Зайцев](name)
+      # Использование "сотрудник", "коллега" и т.п.
+      - Сотрудник [Алексеев](name) из [логистики](department)
+      - Найди сотрудника [Лебедеву Наталью](name)
+      - Мне нужен сотрудник [Семенов Андрей](name)
+      - Коллега [Попова Мария](name), ее телефон
+      - Человек по фамилии [Григорьев](name)
+      - Есть ли у нас работник [Степанов](name)?
+      - Ищу коллегу [Анну Власову](name)
+      - Мне нужен специалист [Кирилл Зайцев](name)
 
-        # Разные формулировки и падежи
-        - Подскажи, где [Егорова Ирина](name)?
-        - Хочу связаться с [Павлом Фроловым](name)
-        - Нужна информация по [Екатерине Беловой](name) из проекта [Гамма](project)
-        - Работает ли у нас [Максим Козлов](name)?
-        - [Антон Мельников](name) еще в [финансах](department)?
-        - У [Сидоровой Ольги](name) какой кабинет?
-        - С [Петровым Иваном](name) можно поговорить?
-        - О [Кузнецове Сергее](name) что-нибудь известно?
-        - Это [Макаров Дмитрий](name)?
-        - Дай мне телефон [Захаровой Анны](name)
-        - Информация о [Беляеве Игоре](name)
-        - Я ищу [Соловьеву Марину](name)
+      # Разные формулировки и падежи
+      - Подскажи, где [Егорова Ирина](name)?
+      - Хочу связаться с [Павлом Фроловым](name)
+      - Нужна информация по [Екатерине Беловой](name) из проекта [Гамма](project)
+      - Работает ли у нас [Максим Козлов](name)?
+      - [Антон Мельников](name) еще в [финансах](department)?
+      - У [Сидоровой Ольги](name) какой кабинет?
+      - С [Петровым Иваном](name) можно поговорить?
+      - О [Кузнецове Сергее](name) что-нибудь известно?
+      - Это [Макаров Дмитрий](name)?
+      - Дай мне телефон [Захаровой Анны](name)
+      - Информация о [Беляеве Игоре](name)
+      - Я ищу [Соловьеву Марину](name)
 
-        # Имена в середине фразы
-        - Из [отдела разработки](department) мне нужен [Дмитрий](name)
-        - В проекте [Феникс](project) работает [Светлана Зайцева](name), найди ее
-        - По [финансовому отделу](department) ищу [Наталью](name) [Лебедеву](name)
-        - Можешь найти [Виктора](name) из [IT](department)?
-        - В [HR](department) есть [Ольга](name)? Мне нужна [Ольга Смирнова](name).
-        - Когда у [Петра](name) из [логистики](department) день рождения?
+      # Имена в середине фразы
+      - Из [отдела разработки](department) мне нужен [Дмитрий](name)
+      - В проекте [Феникс](project) работает [Светлана Зайцева](name), найди ее
+      - По [финансовому отделу](department) ищу [Наталью](name) [Лебедеву](name)
+      - Можешь найти [Виктора](name) из [IT](department)?
+      - В [HR](department) есть [Ольга](name)? Мне нужна [Ольга Смирнова](name).
+      - Когда у [Петра](name) из [логистики](department) день рождения?
 
-        # Сокращенные/уменьшительно-ласкательные имена (если не мапятся синонимами, DIET должен научиться)
-        # Если есть синонимы, эти примеры помогут DIET правильно определить сущность 'name' до замены
-        - Где [Женя](name) из [маркетинга](department)?
-        - Позови [Сашу](name) из [продаж](department)
-        - Мне нужен [Дима](name) [Петров](name)
-        - [Маша](name) [Иванова](name) в каком проекте?
-        - [Костя](name) [Новиков](name) еще здесь?
-        - [Оля](name) [Волкова](name) из [бухгалтерии](department)
-        - Как найти [Сережу](name) [Кузнецова](name)?
-        - [Вася](name) [Пупкин](name)
+      # Сокращенные/уменьшительно-ласкательные имена (если не мапятся синонимами, DIET должен научиться)
+      # Если есть синонимы, эти примеры помогут DIET правильно определить сущность 'name' до замены
+      - Где [Женя](name) из [маркетинга](department)?
+      - Позови [Сашу](name) из [продаж](department)
+      - Мне нужен [Дима](name) [Петров](name)
+      - [Маша](name) [Иванова](name) в каком проекте?
+      - [Костя](name) [Новиков](name) еще здесь?
+      - [Оля](name) [Волкова](name) из [бухгалтерии](department)
+      - Как найти [Сережу](name) [Кузнецова](name)?
+      - [Вася](name) [Пупкин](name)
 
-        # --- Комбинации с возрастом ---
-        - Найди [Марию](name) которой [25](age_exact) лет
-        - Ищу сотрудника [Олега](name) возрастом [32](age_exact) года из [аналитики](department)
-        - Покажи всех кому ровно [40](age_exact) в [отделе маркетинга](department)
-        - Нужен [Иван](name) из [маркетинга](department), ему [28](age_exact)
-        - Есть ли у нас [Светлана](name), [35](age_exact) лет, из проекта [Заря](project)?
-        - Найди сотрудников старше [30](age_older_than) лет из [IT](department)
-        - Покажи тех, кто старше [25](age_older_than) и работает над проектом [Инновация](project)
-        - Мне нужны люди из [IT](department) старше [33](age_older_than), например [Алексей Петров](name)
-        - [Алексей](name), которому больше [40](age_older_than) лет, он из [финансов](department)?
-        - Кто в компании старше [50](age_older_than) и работает в [администрации](department)?
-        - Найди сотрудников младше [30](age_younger_than) лет и фамилия [Сидоров](name)
-        - Покажи тех, кто младше [25](age_younger_than) и его зовут [Анна](name)
-        - Мне нужны люди из [разработки](department) младше [28](age_younger_than), особенно [Максим](name)
-        - [Елена](name), которой меньше [35](age_younger_than) лет, работает в проекте [Оптимизация](project)?
-        - Кто в компании младше [22](age_younger_than) и его фамилия [Иванов](name)?
+      # --- Комбинации с возрастом ---
+      - Найди [Марию](name) которой [25](age_exact) лет
+      - Ищу сотрудника [Олега](name) возрастом [32](age_exact) года из [аналитики](department)
+      - Покажи всех кому ровно [40](age_exact) в [отделе маркетинга](department)
+      - Нужен [Иван](name) из [маркетинга](department), ему [28](age_exact)
+      - Есть ли у нас [Светлана](name), [35](age_exact) лет, из проекта [Заря](project)?
+      - Найди сотрудников старше [30](age_older_than) лет из [IT](department)
+      - Покажи тех, кто старше [25](age_older_than) и работает над проектом [Инновация](project)
+      - Мне нужны люди из [IT](department) старше [33](age_older_than), например [Алексей Петров](name)
+      - [Алексей](name), которому больше [40](age_older_than) лет, он из [финансов](department)?
+      - Кто в компании старше [50](age_older_than) и работает в [администрации](department)?
+      - Найди сотрудников младше [30](age_younger_than) лет и фамилия [Сидоров](name)
+      - Покажи тех, кто младше [25](age_younger_than) и его зовут [Анна](name)
+      - Мне нужны люди из [разработки](department) младше [28](age_younger_than), особенно [Максим](name)
+      - [Елена](name), которой меньше [35](age_younger_than) лет, работает в проекте [Оптимизация](project)?
+      - Кто в компании младше [22](age_younger_than) и его фамилия [Иванов](name)?
 
-        # --- Комбинации с днем рождения ---
-        - Найди [Анну](name), у которой день рождения [в июне](birthday_specifier) и она из [маркетинга](department)
-        - Ищу [Петра](name) с ДР [завтра](birthday_specifier), он работает в [IT](department)?
-        - Сотрудники, родившиеся [15 мая](birthday_specifier) и участвующие в проекте [Сокол](project)
-        - Кто из [маркетинга](department) отмечает день рождения [на следующей неделе](birthday_specifier), особенно [Мария](name)?
-        - Покажи [Ольгу](name), если она родилась [в 1990 году](birthday_specifier) и работает в [финансовом отделе](department)
-        - У кого день рождения [сегодня](birthday_specifier) из [разработчиков](department)?
-        - Ищу тех, кто родился [зимой](birthday_specifier) и их фамилия [Морозов](name)
-        - Найди [Виктора](name) [Семенова](name), день рождения [10 марта](birthday_specifier)
-        - [Екатерина](name) из [отдела кадров](department), у которой ДР [в этом месяце](birthday_specifier)
-        - Сотрудники с днем рождения [скоро](birthday_specifier) из проекта [Альфа](project)
+      # --- Комбинации с днем рождения ---
+      - Найди [Анну](name), у которой день рождения [в июне](birthday_specifier) и она из [маркетинга](department)
+      - Ищу [Петра](name) с ДР [завтра](birthday_specifier), он работает в [IT](department)?
+      - Сотрудники, родившиеся [15 мая](birthday_specifier) и участвующие в проекте [Сокол](project)
+      - Кто из [маркетинга](department) отмечает день рождения [на следующей неделе](birthday_specifier), особенно [Мария](name)?
+      - Покажи [Ольгу](name), если она родилась [в 1990 году](birthday_specifier) и работает в [финансовом отделе](department)
+      - У кого день рождения [сегодня](birthday_specifier) из [разработчиков](department)?
+      - Ищу тех, кто родился [зимой](birthday_specifier) и их фамилия [Морозов](name)
+      - Найди [Виктора](name) [Семенова](name), день рождения [10 марта](birthday_specifier)
+      - [Екатерина](name) из [отдела кадров](department), у которой ДР [в этом месяце](birthday_specifier)
+      - Сотрудники с днем рождения [скоро](birthday_specifier) из проекта [Альфа](project)
 
-        # --- Комбинации с ответственностью за проект (роль lead) ---
-        - Кто из отдела [маркетинга](department) отвечает за проект "[SpringSale](project#lead)"? Его зовут [Иван](name)?
-        - Назови ответственного за проект "[Новый Сайт](project#lead)", если это [Мария Петрова](name)
-        - Мне нужен лид проекта "[Омега](project#lead)" из [разработки](department)
-        - Кто главный по проекту "[Интеграция CRM](project#lead)", [Сергей](name) или [Ольга](name)?
-        - Покажи [Анну](name) из [IT](department), если она руководит проектом "[Аналитика](project#lead)"
-        - [Петров](name) [Иван](name) отвечает за проект "[Реструктуризация](project#lead)"?
-        - Лид проекта "[Квартальный отчет](project#lead)" из [финансов](department), фамилия [Кузнецов](name)
-        - Проект "[Мобильное приложение](project#lead)" - кто ответственный? Возможно, [Алексей](name)?
-        - По проекту "[Обучение персонала](project#lead)" нужен главный, это [Светлана](name)?
+      # --- Комбинации с ответственностью за проект (роль lead) ---
+      - Кто из отдела [маркетинга](department) отвечает за проект "[SpringSale](project#lead)"? Его зовут [Иван](name)?
+      - Назови ответственного за проект "[Новый Сайт](project#lead)", если это [Мария Петрова](name)
+      - Мне нужен лид проекта "[Омега](project#lead)" из [разработки](department)
+      - Кто главный по проекту "[Интеграция CRM](project#lead)", [Сергей](name) или [Ольга](name)?
+      - Покажи [Анну](name) из [IT](department), если она руководит проектом "[Аналитика](project#lead)"
+      - [Петров](name) [Иван](name) отвечает за проект "[Реструктуризация](project#lead)"?
+      - Лид проекта "[Квартальный отчет](project#lead)" из [финансов](department), фамилия [Кузнецов](name)
+      - Проект "[Мобильное приложение](project#lead)" - кто ответственный? Возможно, [Алексей](name)?
+      - По проекту "[Обучение персонала](project#lead)" нужен главный, это [Светлана](name)?
 
-        # --- Комбинации с навыками/технологиями ---
-        - Кто у нас в команде работает с [Python](skill), например, [Дмитрий](name)?
-        - Найди сотрудников, знающих [Java](skill) и [Spring](skill), из [отдела разработки](department)
-        - Мне нужен дизайнер, владеющий [Figma](skill), по имени [Елена](name)
-        - Кто из [IT](department) умеет работать с [Kubernetes](skill)? Особенно интересует [Михаил](name)
-        - Покажи аналитиков с навыком [SQL](skill), таких как [Анна Смирнова](name)
-        - Ищу разработчика на [JavaScript](skill) из проекта "[Фронтенд](project)", возможно [Павел](name)
-        - Есть ли у нас эксперты по [машинному обучению](skill) в [R&D отделе](department)?
-        - Сотрудники, которые знают [английский язык](skill) на уровне B2, из [международного отдела](department)
-        - Найди [Марию](name) [Волкову](name), которая разбирается в [Go](skill)
-        - Кто умеет писать на [C++](skill) и работает в [отделе исследований](department), например, [Андрей](name)?
+      # --- Комбинации с навыками/технологиями ---
+      - Кто у нас в команде работает с [Python](skill), например, [Дмитрий](name)?
+      - Найди сотрудников, знающих [Java](skill) и [Spring](skill), из [отдела разработки](department)
+      - Мне нужен дизайнер, владеющий [Figma](skill), по имени [Елена](name)
+      - Кто из [IT](department) умеет работать с [Kubernetes](skill)? Особенно интересует [Михаил](name)
+      - Покажи аналитиков с навыком [SQL](skill), таких как [Анна Смирнова](name)
+      - Ищу разработчика на [JavaScript](skill) из проекта "[Фронтенд](project)", возможно [Павел](name)
+      - Есть ли у нас эксперты по [машинному обучению](skill) в [R&D отделе](department)?
+      - Сотрудники, которые знают [английский язык](skill) на уровне B2, из [международного отдела](department)
+      - Найди [Марию](name) [Волкову](name), которая разбирается в [Go](skill)
+      - Кто умеет писать на [C++](skill) и работает в [отделе исследований](department), например, [Андрей](name)?
 
-        # --- Сложные комбинированные запросы ---
-        - Найди [Сергея](name) из [IT](department) старше [30](age_older_than) лет, который знает [Java](skill)
-        - Ищу [Марию](name) из [продаж](department), которой [27](age_exact) лет, день рождения [в августе](birthday_specifier) и она работает над проектом [Новые клиенты](project)
-        - Покажи сотрудников младше [35](age_younger_than) из проекта [Альфа](project), которые умеют работать с [Excel](skill)
-        - [Елена](name) из [бухгалтерии](department), ДР [в этом месяце](birthday_specifier), старше [40](age_older_than), ответственная за проект "[Годовой отчет](project#lead)"
-        - Сотрудник [Иванов](name) [Петр](name), которому [25](age_exact) лет, день рождения [1 апреля](birthday_specifier) и навык [SQL](skill)
-        - Кто из [разработки](department) старше [28](age_older_than), родился [летом](birthday_specifier) и знает [Python](skill)?
-        - Найди [Анну Петрову](name) из [маркетинга](department), ей [33](age_exact), др [5 июля](birthday_specifier), и она работает с [Figma](skill)
-        - Нужен [Java](skill)-разработчик из [отдела разработки](department), который отвечает за проект "[Миграция данных](project#lead)" и младше [35](age_younger_than) лет.
-        - Кто из [маркетинга](department) знает [Photoshop](skill), у него день рождения [в июле](birthday_specifier) и он участвует в проекте [Летняя акция](project)?
-        - Мне нужен [Python](skill) программист старше [25](age_older_than), работающий над проектом "[AI Ассистент](project#lead)" и его зовут [Олег](name).
-        - Лид проекта "[Новый Продукт](project#lead)", который умеет работать с [Agile](skill) и его фамилия [Смирнов](name).
-        - У кого [скоро](birthday_specifier) ДР из тех, кто знает [SQL](skill) и работает в [аналитическом отделе](department)?
+      # --- Сложные комбинированные запросы ---
+      - Найди [Сергея](name) из [IT](department) старше [30](age_older_than) лет, который знает [Java](skill)
+      - Ищу [Марию](name) из [продаж](department), которой [27](age_exact) лет, день рождения [в августе](birthday_specifier) и она работает над проектом [Новые клиенты](project)
+      - Покажи сотрудников младше [35](age_younger_than) из проекта [Альфа](project), которые умеют работать с [Excel](skill)
+      - [Елена](name) из [бухгалтерии](department), ДР [в этом месяце](birthday_specifier), старше [40](age_older_than), ответственная за проект "[Годовой отчет](project#lead)"
+      - Сотрудник [Иванов](name) [Петр](name), которому [25](age_exact) лет, день рождения [1 апреля](birthday_specifier) и навык [SQL](skill)
+      - Кто из [разработки](department) старше [28](age_older_than), родился [летом](birthday_specifier) и знает [Python](skill)?
+      - Найди [Анну Петрову](name) из [маркетинга](department), ей [33](age_exact), др [5 июля](birthday_specifier), и она работает с [Figma](skill)
+      - Нужен [Java](skill)-разработчик из [отдела разработки](department), который отвечает за проект "[Миграция данных](project#lead)" и младше [35](age_younger_than) лет.
+      - Кто из [маркетинга](department) знает [Photoshop](skill), у него день рождения [в июле](birthday_specifier) и он участвует в проекте [Летняя акция](project)?
+      - Мне нужен [Python](skill) программист старше [25](age_older_than), работающий над проектом "[AI Ассистент](project#lead)" и его зовут [Олег](name).
+      - Лид проекта "[Новый Продукт](project#lead)", который умеет работать с [Agile](skill) и его фамилия [Смирнов](name).
+      - У кого [скоро](birthday_specifier) ДР из тех, кто знает [SQL](skill) и работает в [аналитическом отделе](department)?
 
-        # --- Запросы с возможными опечатками или неполной информацией ---
-        - Ишу [Олексея](name) [Васильева](name) из [АйТи](department)
-        - Контакты [Мари Михайловой](name), она вроде из [продаж](department)
-        - [Сергей Н.](name) из [разработки](department)
-        - [Анна](name) фамилия [Кузнецова](name) или [Кузнецова](name) [Анна](name), отдел [HR](department)
-        - Мне нужен [Петр](name), не помню фамилию, из [логистики](department)
-        - [Сидоров](name)... кажется [Дмитрий](name)? Отдел [финансов](department).
-        - Работник [Иванов](name), [20-30](age_range) лет, проект [Гамма](project). (age_range потребует дополнительной логики или Duckling)
+      # --- Запросы с возможными опечатками или неполной информацией ---
+      - Ишу [Олексея](name) [Васильева](name) из [АйТи](department)
+      - Контакты [Мари Михайловой](name), она вроде из [продаж](department)
+      - [Сергей Н.](name) из [разработки](department)
+      - [Анна](name) фамилия [Кузнецова](name) или [Кузнецова](name) [Анна](name), отдел [HR](department)
+      - Мне нужен [Петр](name), не помню фамилию, из [логистики](department)
+      - [Сидоров](name)... кажется [Дмитрий](name)? Отдел [финансов](department).
+      - Работник [Иванов](name), [20-30](age_range) лет, проект [Гамма](project). (age_range потребует дополнительной логики или Duckling)
 
   - synonym: Евгений
     examples: |
@@ -2207,17 +2532,78 @@ nlu:
 
   - intent: search_event
     examples: |
+      # --- Базовые запросы на поиск ---
       - Какие мероприятия [завтра](date)?
-      - Что у нас по [корпоративам](event_name)?
+      - Какие мероприятия запланированы на [сегодня](date)?
+      - Что у нас по [корпоративам](event_category)?
+      - Какие [корпоративы](event_category) будут на [следующей неделе](date)?
       - Когда будет [летний тимбилдинг](event_name)?
       - Покажи календарь мероприятий на [следующей неделе](date)
       - Будет ли [новогодний праздник](event_name) [в декабре](date)?
-      - Расписание [тренингов](event_name)
+      - Расписание [тренингов](event_category)
       - Какие [события](event_name) запланированы на [25 мая](date)
       - Что интересного [в пятницу](date)?
       - Ищу [конференцию по AI](event_name)
+      - Покажи все [корпоративные тренинги](event_category) в [июне](date).
+      - Какие [встречи](event_category) запланированы?
+      - Какие есть [онлайн](event_category) мероприятия?
+      - Список всех [событий](event_name) на [этот месяц](date)
+      - Мероприятия на [ближайшую неделю](date)
+      - Что будет [послезавтра](date)?
+      - Есть ли какие-нибудь [лекции](event_category) [в этом квартале](date)?
 
-  - intent: find_birthday # Общий поиск ДР
+      # --- Поиск с фильтрацией по отделу ---
+      - Есть ли [в этом месяце](date) [тимбилдинг](event_category) для [отдела IT](department)?
+      - Какие [тренинги](event_category) для [маркетологов](department) пройдут [в июле](date)?
+      - Мероприятия для [отдела продаж](department) на [следующей неделе](date)
+      - Планируется ли [корпоратив](event_category) для [разработчиков](department)?
+      - События для [HR департамента](department)
+
+      # --- Поиск с указанием места ---
+      - Где и когда пройдёт [корпоративный пикник](event_name)?
+      - Какие мероприятия в [переговорке Альфа](location) [завтра](date)?
+      - Что будет [онлайн](location) на [этой неделе](date)?
+      - [Конференция по маркетингу](event_name) будет проходить [в главном зале](location)?
+      - Найди [события](event_name) в [офисе на Лесной](location)
+      - Какие [вебинары](event_category) пройдут [онлайн](location)?
+
+      # --- Поиск по организатору ---
+      - Когда будет следующий [хакатон](event_name) и кто его организует?
+      - Какие мероприятия организует [HR отдел](organizer)?
+      - Что планирует [Иван Петров](organizer) на [следующий месяц](date)?
+      - [Встреча с CEO](event_name), кто [организатор](organizer)?
+      - Какой [тренинг](event_category) проводит [компания "Эксперты"](organizer)?
+
+      # --- Поиск по категории/типу ---
+      - Найди [внутрикорпоративное мероприятие, связанное с благотворительностью](event_category).
+      - Покажи мне все [онлайн‑эвенты](event_category) на [следующей неделе](date).
+      - Есть ли [спортивные](event_category) мероприятия?
+      - Ищу [образовательные](event_category) [семинары](event_name)
+      - Какие [развлекательные](event_category) события намечаются?
+      - Покажи [благотворительные акции](event_category)
+
+      # --- Запросы, подразумевающие создание/добавление/управление (NLU извлекает данные, бэк решает) ---
+      - Добавь меня в список участников встречи "[Общая планёрка](event_name)" [25 мая](date).
+      - Запиши меня на [тренинг по продажам](event_name) [в следующий вторник](date)
+      - Хочу участвовать в [хакатоне](event_name)
+      - Создай внутренний ивент "[Урок йоги](event_name)" на [10 июня в 18:00](date) в [спортзале](location).
+      - Запланируй [командный обед](event_name) для [отдела аналитики](department) на [пятницу в 13:00](date).
+      - Организуй [встречу по проекту Альфа](event_name) [завтра в 10 утра](date) в [переговорке 3](location).
+      - Напомни всем участникам о встрече "[SprintReview](event_name)" [за час до начала](date).
+      - Отправь напоминание о [вебинаре по безопасности](event_name) [завтра утром](date).
+      - Удали событие "[Старая встреча](event_name)" из календаря.
+      - Перенеси [совещание](event_name) с [понедельника](date) на [среду](date).
+      - Кто идет на [корпоратив](event_name) [в субботу](date)?
+      - Покажи участников [встречи по бюджету](event_name).
+
+      # --- Сложные запросы ---
+      - Какие [тренинги](event_category) по [продажам](event_name) от [Ивана Иванова](organizer) будут [в Москве](location) [в следующем месяце](date)?
+      - Найди [онлайн](event_category) [конференцию](event_name) по [маркетингу](department) на [этой неделе](date).
+      - Запланируй [тимбилдинг](event_category) для [IT-отдела](department) на [природе](location) [в конце июня](date).
+      - Хочу пойти на [мастер-класс по Python](event_name), который проводит [Алексей Смирнов](organizer), [15 числа](date) [онлайн](location).
+      - Какие [благотворительные](event_category) мероприятия запланировал [отдел HR](organizer) на [осень](date)?
+
+  - intent: find_birthday
     examples: |
       - У кого день рождения [в этом месяце](date)?
       - Когда ДР у [Ивана Петрова](name)?
@@ -2226,6 +2612,7 @@ nlu:
       - У [Анны](name) скоро день рождения?
       - Чьи дни рождения [на этой неделе](date)?
       - Кто отмечает ДР [завтра](date)?
+      - Есть ли в календаре дня рождения коллег в [мае](date)?
 
   - intent: check_task
     examples: |
@@ -2305,10 +2692,10 @@ stories:
   - intent: greet
   - action: utter_greet
   - intent: search_person
-    entities: # Примеры сущностей для тестирования
+    entities:
     - name: "Анна"
     - department: "маркетинг"
-  - action: action_process_request # Заменяем на наше новое действие
+  - action: action_process_request
 
 - story: поиск человека без приветствия
   steps:
@@ -2317,17 +2704,61 @@ stories:
       - name: "Петр"
     - action: action_process_request
 
-- story: поиск мероприятия
+- story: поиск мероприятия базовый
   steps:
     - intent: greet
     - action: utter_greet
     - intent: search_event
       entities:
-      - event_name: "корпоратив"
+      - event_category: "корпоратив"
       - date: "завтра"
     - action: action_process_request
 
-# Можно добавить больше историй для других интентов и сценариев
+- story: поиск мероприятия с локацией и категорией
+  steps:
+  - intent: search_event
+    entities:
+    - event_category: "тренинг"
+    - location: "онлайн"
+    - date: "на следующей неделе"
+  - action: action_process_request
+
+- story: создание мероприятия (через search_event)
+  steps:
+  - user: "Создай событие командный сбор в пятницу в переговорке Дзен"
+    intent: search_event
+    entities:
+    - event_name: "командный сбор"
+    - date: "в пятницу"
+    - location: "переговорке Дзен"
+  - action: action_process_request
+
+- story: поиск мероприятия для отдела
+  steps:
+  - intent: search_event
+    entities:
+    - event_category: "тимбилдинг"
+    - department: "IT отдел"
+    - date: "в этом месяце"
+  - action: action_process_request
+
+================================================================================
+
+# Файл: data/lookups/event_categories.txt
+# Содержимое:
+корпоратив
+тренинг
+вебинар
+митап
+конференция
+тимбилдинг
+мастер-класс
+семинар
+воркшоп
+стратегическая сессия
+онлайн-эвент
+благотворительная акция
+спортивное мероприятие
 
 ================================================================================
 
@@ -2444,6 +2875,72 @@ stories:
   - user: |
       Найди Виктора из отдела разработки
     intent: search_person
+    entities:
+    - name: "Виктора"
+    - department: "отдела разработки"
+  - action: action_process_request
+
+- story: search person directly
+  steps:
+  - user: |
+      Контакты Ивана Сидорова
+    intent: search_person
+    entities:
+    - name: "Ивана Сидорова"
+  - action: action_process_request
+
+- story: search event basic
+  steps:
+  - user: |
+      Какие мероприятия завтра?
+    intent: search_event
+    entities:
+    - date: "завтра"
+  - action: action_process_request
+
+- story: search event with category and location
+  steps:
+  - user: "Какие тренинги онлайн на следующей неделе?"
+    intent: search_event
+    entities:
+    - event_category: "тренинги"
+    - location: "онлайн"
+    - date: "на следующей неделе"
+  - action: action_process_request
+
+- story: create event (via search_event intent)
+  steps:
+  - user: "Создай митинг по проекту Гамма на завтра в 10"
+    intent: search_event
+    entities:
+    - event_name: "митинг по проекту Гамма"
+    - date: "завтра в 10"
+  - action: action_process_request
+
+- story: search event for department
+  steps:
+  - user: "Есть тимбилдинг для HR в этом месяце?"
+    intent: search_event
+    entities:
+    - event_category: "тимбилдинг"
+    - department: "HR"
+    - date: "в этом месяце"
+  - action: action_process_request
+
+================================================================================
+
+# Файл: tests/test_stories.yml~
+# Содержимое:
+stories:
+- story: happy path - greet and search person
+  steps:
+  - user: |
+      привет
+    intent: greet
+  - action: utter_greet
+  - user: |
+      Найди Виктора из отдела разработки
+    intent: search_person
   - action: action_process_request # Убедитесь, что это ваше актуальное действие
   # Можно добавить ассерты на извлеченные слоты, если они заполняются
   # - slot_was_set:
@@ -2465,103 +2962,6 @@ stories:
   - action: action_process_request
 
 # ... и так далее для других интентов
-
-================================================================================
-
-# Файл: tests/test_stories.yml~
-# Содержимое:
-#### This file contains tests to evaluate that your bot behaves as expected.
-#### If you want to learn more, please see the docs: https://rasa.com/docs/rasa/testing-your-assistant
-
-stories:
-- story: happy path 1
-  steps:
-  - user: |
-      hello there!
-    intent: greet
-  - action: utter_greet
-  - user: |
-      amazing
-    intent: mood_great
-  - action: utter_happy
-
-- story: happy path 2
-  steps:
-  - user: |
-      hello there!
-    intent: greet
-  - action: utter_greet
-  - user: |
-      amazing
-    intent: mood_great
-  - action: utter_happy
-  - user: |
-      bye-bye!
-    intent: goodbye
-  - action: utter_goodbye
-
-- story: sad path 1
-  steps:
-  - user: |
-      hello
-    intent: greet
-  - action: utter_greet
-  - user: |
-      not good
-    intent: mood_unhappy
-  - action: utter_cheer_up
-  - action: utter_did_that_help
-  - user: |
-      yes
-    intent: affirm
-  - action: utter_happy
-
-- story: sad path 2
-  steps:
-  - user: |
-      hello
-    intent: greet
-  - action: utter_greet
-  - user: |
-      not good
-    intent: mood_unhappy
-  - action: utter_cheer_up
-  - action: utter_did_that_help
-  - user: |
-      not really
-    intent: deny
-  - action: utter_goodbye
-
-- story: sad path 3
-  steps:
-  - user: |
-      hi
-    intent: greet
-  - action: utter_greet
-  - user: |
-      very terrible
-    intent: mood_unhappy
-  - action: utter_cheer_up
-  - action: utter_did_that_help
-  - user: |
-      no
-    intent: deny
-  - action: utter_goodbye
-
-- story: say goodbye
-  steps:
-  - user: |
-      bye-bye!
-    intent: goodbye
-  - action: utter_goodbye
-
-- story: bot challenge
-  steps:
-  - user: |
-      are you a bot?
-    intent: bot_challenge
-  - action: utter_iamabot
-
 
 ================================================================================
 

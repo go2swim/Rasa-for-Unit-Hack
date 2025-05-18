@@ -28,7 +28,7 @@ stories:
       Какие мероприятия завтра?
     intent: search_event
     entities:
-    - date: "завтра"
+    - date: "завтра" # или birthday_specifier если будет размечено так
   - action: action_process_request
 
 - story: search event with category and location
@@ -38,7 +38,7 @@ stories:
     entities:
     - event_category: "тренинги"
     - location: "онлайн"
-    - date: "на следующей неделе"
+    - date: "на следующей неделе" # или birthday_specifier
   - action: action_process_request
 
 - story: create event (via search_event intent)
@@ -47,7 +47,7 @@ stories:
     intent: search_event
     entities:
     - event_name: "митинг по проекту Гамма"
-    - date: "завтра в 10"
+    - date: "завтра в 10" # или birthday_specifier
   - action: action_process_request
 
 - story: search event for department
@@ -57,5 +57,31 @@ stories:
     entities:
     - event_category: "тимбилдинг"
     - department: "HR"
-    - date: "в этом месяце"
+    - date: "в этом месяце" # или birthday_specifier
+  - action: action_process_request
+
+- story: find birthdays this week
+  steps:
+  - user: "Покажи дни рождения этой недели"
+    intent: find_birthday
+    entities:
+    - birthday_specifier: "этой недели"
+  - action: action_process_request
+
+- story: find birthdays in marketing in May
+  steps:
+  - user: "Какие дни рождения в отделе маркетинга в мае?"
+    intent: find_birthday
+    entities:
+    - department: "отделе маркетинга"
+    - birthday_specifier: "в мае"
+  - action: action_process_request
+
+- story: find birthdays for employees older than 30 in June
+  steps:
+  - user: "Дни рождения сотрудников старше 30 лет в июне"
+    intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в июне"
   - action: action_process_request

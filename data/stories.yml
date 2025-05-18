@@ -55,3 +55,26 @@ stories:
     - department: "IT отдел"
     - date: "в этом месяце"
   - action: action_process_request
+
+- story: поиск дней рождения в этом месяце
+  steps:
+  - intent: find_birthday
+    entities:
+    - birthday_specifier: "в этом месяце"
+  - action: action_process_request
+
+- story: поиск дней рождения в отделе маркетинга в мае
+  steps:
+  - intent: find_birthday
+    entities:
+    - department: "отделе маркетинга"
+    - birthday_specifier: "в мае"
+  - action: action_process_request
+
+- story: поиск дней рождения сотрудников старше 30
+  steps:
+  - intent: find_birthday
+    entities:
+    - age_older_than: "30"
+    - birthday_specifier: "в этом году" # Добавляем общий спецификатор, если не указан явно
+  - action: action_process_request
