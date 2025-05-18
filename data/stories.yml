@@ -20,13 +20,13 @@ stories:
 
 - story: поиск мероприятия базовый
   steps:
-    - intent: greet
-    - action: utter_greet
-    - intent: search_event
-      entities:
-      - event_category: "корпоратив"
-      - date: "завтра"
-    - action: action_process_request
+  - intent: greet
+  - action: utter_greet
+  - intent: search_event
+    entities:
+    - event_category: "корпоратив"
+    - date: "завтра"
+  - action: action_process_request
 
 - story: поиск мероприятия с локацией и категорией
   steps:
@@ -63,77 +63,50 @@ stories:
     - birthday_specifier: "в этом месяце"
   - action: action_process_request
 
-- story: поиск дней рождения в отделе маркетинга в мае
+- story: поиск дней рождения в отделе маркетинга в мае и старше 30
   steps:
   - intent: find_birthday
     entities:
     - department: "отделе маркетинга"
     - birthday_specifier: "в мае"
-  - action: action_process_request
-
-- story: поиск дней рождения сотрудников старше 30
-  steps:
-  - intent: find_birthday
-    entities:
     - age_older_than: "30"
-    - birthday_specifier: "в этом году" # Добавляем общий спецификатор, если не указан явно
   - action: action_process_request
 
-  - story: поиск дней рождения сотрудников старше 30
-    steps:
-      - intent: find_birthday
-        entities:
-          - age_older_than: "30"
-          - birthday_specifier: "в этом году"
-      - action: action_process_request
+- story: проверить мои невыполненные задачи по проекту Альфа
+  steps:
+  - intent: check_task
+    entities:
+    - name: "мои"
+    - task_status: "невыполненные"
+    - project: "Альфа"
+  - action: action_process_request
 
-  - story: проверить мои задачи на сегодня
-    steps:
-      - intent: check_task
-        entities:
-          - name: "мои"
-          - date: "сегодня"
-      - action: action_process_request
+- story: проверить задачи Петрова с высоким приоритетом и тегом отчет на этой неделе
+  steps:
+  - intent: check_task
+    entities:
+    - name: "Петрова"
+    - task_priority: "высоким"
+    - task_tag: "отчет"
+    - date: "на этой неделе"
+  - action: action_process_request
 
-  - story: проверить невыполненные задачи Петрова по проекту Альфа
-    steps:
-      - intent: check_task
-        entities:
-          - name: "Петрова"
-          - task_status: "невыполненные"
-          - project: "Альфа"
-      - action: action_process_request
+- story: проверить мой календарь на наличие свободных слотов завтра утром
+  steps:
+  - intent: check_employment_calendar
+    entities:
+    - name: "мой"
+    - date: "завтра утром"
+    # "свободные слоты" будут в тексте, обрабатываются бэкендом/action
+  - action: action_process_request
 
-  - story: проверить задачи с высоким приоритетом и тегом отчет
-    steps:
-      - intent: check_task
-        entities:
-          - task_priority: "высоким"
-          - task_tag: "отчет"
-      - action: action_process_request
-
-
-  - story: проверить мой календарь на сегодня
-    steps:
-      - intent: check_employment_calendar
-        entities:
-          - name: "мой"
-          - date: "сегодня"
-      - action: action_process_request
-
-  - story: найти свободные слоты у Петрова на неделе
-    steps:
-      - intent: check_employment_calendar
-        entities:
-          - name: "Петрова" # или Петров
-          - date: "на этой неделе"
-      - action: action_process_request # Бэкенд будет искать "свободные слоты" по ключевым словам в тексте
-
-  - story: проверить совещания с участием Иванова в моем календаре
-    steps:
-      - intent: check_employment_calendar
-        entities:
-          - name: "моём" # или мой
-          - name: "Иванова" # или Иванов
-          - event_name: "совещания"
-      - action: action_process_request
+- story: проверить календарь Ольги на встречи с Петровым на следующей неделе
+  steps:
+  - user: "Какие встречи у Ольги с Петровым на следующей неделе?"
+    intent: check_employment_calendar
+    entities:
+    - name: "Ольги"
+    - name: "Петровым"
+    - event_name: "встречи"
+    - date: "на следующей неделе"
+  - action: action_process_request

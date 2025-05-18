@@ -160,3 +160,47 @@ stories:
     - name: "моем"
     - event_name: "встречи"
   - action: action_process_request
+
+- story: find birthdays for employees in marketing in May older than 30
+  steps:
+  - user: "Какие дни рождения в отделе маркетинга в мае у тех кто старше 30?"
+    intent: find_birthday
+    entities:
+    - department: "отделе маркетинга"
+    - birthday_specifier: "в мае"
+    - age_older_than: "30"
+  - action: action_process_request
+
+- story: check my overdue tasks for project Gamma with high priority
+  steps:
+  - user: "Мои просроченные задачи по проекту Гамма с высоким приоритетом"
+    intent: check_task
+    entities:
+    - name: "Мои"
+    - task_status: "просроченные"
+    - project: "Гамма"
+    - task_priority: "высоким"
+  - action: action_process_request
+
+- story: check my calendar for free slots tomorrow afternoon for 1h meeting
+  steps:
+  - user: "Найди мне свободные слоты завтра после обеда для часовой встречи"
+    intent: check_employment_calendar
+    entities:
+    - name: "мне"
+    - date: "завтра после обеда"
+    - date: "часовой" # Duckling
+    - event_name: "встречи"
+  - action: action_process_request
+
+- story: check Olga's calendar for meetings with Petrov next week in meeting room Alpha
+  steps:
+  - user: "Какие встречи у Ольги с Петровым на следующей неделе в переговорке Альфа?"
+    intent: check_employment_calendar
+    entities:
+    - name: "Ольги"
+    - name: "Петровым"
+    - date: "на следующей неделе"
+    - event_name: "встречи"
+    - room_name: "Альфа"
+  - action: action_process_request
