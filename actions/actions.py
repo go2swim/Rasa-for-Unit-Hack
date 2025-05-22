@@ -4,7 +4,6 @@ import json
 
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
-from rasa_sdk.events import SlotSet
 
 logger = logging.getLogger(__name__)
 
